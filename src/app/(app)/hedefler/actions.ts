@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { GOAL_TYPES, localInputToIso, type GoalType } from "@/lib/goals";
+import { localInputToIso } from "@/lib/goals";
 import { SEED_GOALS } from "@/lib/seed";
 
 import type { ActionResult } from "@/lib/action";
@@ -21,35 +21,29 @@ function done(error: { message: string } | null): ActionResult {
   return {};
 }
 
-function text(form: FormData, key: string): string | null {
-  const value = String(form.get(key) ?? "").trim();
-  return value === "" ? null : value;
-}
+export type GoalInput = {
+  title: string;
+  color: string;
+  // Bitiş (son) günü, "yyyy-MM-dd". null = tarih yok.
+  dueDate: string | null;
+};
 
-function goalFields(form: FormData) {
-  const type = String(form.get("type")) as GoalType;
-  return {
-    type: GOAL_TYPES.includes(type) ? type : "diğer",
-    title: text(form, "title") ?? "",
-    course_code: text(form, "course_code"),
-    starts_at: localInputToIso(String(form.get("starts_at") ?? "")),
-    ends_at: localInputToIso(String(form.get("ends_at") ?? "")),
-    location: text(form, "location"),
-    color: text(form, "color") ?? "#6366f1",
-    notes: text(form, "notes"),
-  };
-}
+// Hedefte sadece başlık, renk ve bitiş günü girilir. Bitiş günü o günün sonu (23:59, İstanbul) olarak saklanır.
+// Düzenlemede gün değişmediyse eski saatler (ör. sınavın 18:00–20:00'si) korunur.
+export async function saveGoal(id: string | null, input: GoalInput, dueChanged: boolean): Promise<ActionResult> {
+  const title = input.title.trim();
+  if (!title) return { error: "Başlık gerekli." };
+  if (input.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) return { error: "Geçerli bir tarih gir." };
+  const color = /^#[0-9a-fA-F]{6}$/.test(input.color) ? input.color : "#6366f1";
+  const due = input.dueDate ? { starts_at: null, ends_at: localInputToIso(`${input.dueDate}T23:59`) } : { starts_at: null, ends_at: null };
 
-export async function saveGoal(id: string | null, form: FormData): Promise<ActionResult> {
-  const fields = goalFields(form);
-  if (!fields.title) return { error: "Başlık gerekli." };
-  if (fields.starts_at && fields.ends_at && fields.ends_at <= fields.starts_at) {
-    return { error: "Bitiş, başlangıçtan sonra olmalı." };
-  }
   const supabase = await authed();
   const { error } = id
-    ? await supabase.from("goals").update(fields).eq("id", id)
-    : await supabase.from("goals").insert(fields);
+    ? await supabase
+        .from("goals")
+        .update({ title, color, ...(dueChanged ? due : {}) })
+        .eq("id", id)
+    : await supabase.from("goals").insert({ title, color, type: "diğer", ...due });
   return done(error);
 }
 
@@ -59,14 +53,19 @@ export async function deleteGoal(id: string): Promise<ActionResult> {
   return done(error);
 }
 
+// Çalışılacak süre boş olabilir; doluysa 1 dakika – 100 saat.
+const validMinutes = (m: number | null) => m === null || (Number.isInteger(m) && m > 0 && m <= 6000);
+
 export async function addTopic(
   goalId: string,
   parentId: string | null,
   title: string,
   dueDate: string | null,
+  plannedMinutes: number | null,
 ): Promise<ActionResult> {
   title = title.trim();
   if (!title) return { error: "Başlık gerekli." };
+  if (!validMinutes(plannedMinutes)) return { error: "Süre 0 ile 100 saat arasında olmalı." };
   const supabase = await authed();
 
   // Yeni konu kardeşlerinin sonuna eklenir.
@@ -79,6 +78,7 @@ export async function addTopic(
     parent_id: parentId,
     title,
     due_date: dueDate || null,
+    planned_minutes: plannedMinutes,
     sort_order: count ?? 0,
   });
   return done(error);
@@ -86,9 +86,12 @@ export async function addTopic(
 
 export async function updateTopic(
   id: string,
-  fields: { title?: string; due_date?: string | null; miss_note?: string | null },
+  fields: { title?: string; due_date?: string | null; miss_note?: string | null; planned_minutes?: number | null },
 ): Promise<ActionResult> {
   if (fields.title !== undefined && !fields.title.trim()) return { error: "Başlık gerekli." };
+  if (fields.planned_minutes !== undefined && !validMinutes(fields.planned_minutes)) {
+    return { error: "Süre 0 ile 100 saat arasında olmalı." };
+  }
   const supabase = await authed();
   const { error } = await supabase.from("topics").update(fields).eq("id", id);
   return done(error);

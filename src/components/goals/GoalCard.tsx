@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { formatInTimeZone } from "@/lib/dates";
-import { daysUntil, type Goal, type TopicNode } from "@/lib/goals";
+import { daysUntil, goalDate, type Goal, type TopicNode } from "@/lib/goals";
 import { deleteGoal } from "@/app/(app)/hedefler/actions";
 import { GoalForm } from "./GoalForm";
-import { AddTopicForm, TopicTree } from "./TopicTree";
+import { AddTopicForm, TopicTree, subtreeTime } from "./TopicTree";
+import { formatTotal } from "@/lib/sessions";
 import { useAction } from "@/components/useAction";
-
-const TYPE_LABELS = { sınav: "Sınav", proje: "Proje", diğer: "Diğer" } as const;
 
 function formatRange(startIso: string, endIso: string | null): string {
   const start = new Date(startIso);
@@ -21,9 +20,17 @@ function formatRange(startIso: string, endIso: string | null): string {
   return `${formatInTimeZone(start, "d MMMM")} – ${formatInTimeZone(end, "d MMMM yyyy")}`;
 }
 
+// Saatli hedefte (sınav) tarih aralığı, sadece bitiş tarihi olanda bitiş günü.
+function dateLine(goal: Goal): string | null {
+  if (goal.starts_at) return formatRange(goal.starts_at, goal.ends_at);
+  if (goal.ends_at) return `Bitiş: ${formatInTimeZone(new Date(goal.ends_at), "d MMMM yyyy EEEE")}`;
+  return null;
+}
+
 function countdown(goal: Goal, today: string): string | null {
-  if (!goal.starts_at) return null;
-  const days = daysUntil(goal.starts_at, today);
+  const date = goalDate(goal);
+  if (!date) return null;
+  const days = daysUntil(date, today);
   if (days > 0) return `${days} gün kaldı`;
   if (days === 0) return "Bugün";
   if (goal.ends_at && daysUntil(goal.ends_at, today) >= 0) return "Devam ediyor";
@@ -40,11 +47,29 @@ function countTopics(nodes: TopicNode[]): { total: number; done: number } {
   );
 }
 
-export function GoalCard({ goal, topics, today }: { goal: Goal; topics: TopicNode[]; today: string }) {
+export function GoalCard({
+  goal,
+  topics,
+  today,
+  worked,
+}: {
+  goal: Goal;
+  topics: TopicNode[];
+  today: string;
+  worked: Record<string, number>;
+}) {
   const [open, setOpen] = useState(true);
   const [editing, setEditing] = useState(false);
   const remove = useAction();
   const { total, done } = countTopics(topics);
+  // Tüm başlıkların planlanan / çalışılan süresi.
+  const time = topics.reduce(
+    (acc, t) => {
+      const sub = subtreeTime(t, worked);
+      return { planned: acc.planned + sub.planned, worked: acc.worked + sub.worked };
+    },
+    { planned: 0, worked: 0 },
+  );
   const left = countdown(goal, today);
 
   return (
@@ -60,17 +85,12 @@ export function GoalCard({ goal, topics, today }: { goal: Goal; topics: TopicNod
 
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="rounded-full px-2 py-0.5 text-xs font-medium text-white"
-              style={{ backgroundColor: goal.color }}
-            >
-              {TYPE_LABELS[goal.type]}
-            </span>
+            <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: goal.color }} />
             <h2 className="font-semibold">{goal.title}</h2>
             {left && <span className="text-xs text-zinc-500 dark:text-zinc-400">· {left}</span>}
           </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {[goal.starts_at && formatRange(goal.starts_at, goal.ends_at), goal.location].filter(Boolean).join(" · ") ||
+            {[dateLine(goal), goal.location].filter(Boolean).join(" · ") ||
               "Tarih yok"}
           </p>
           {goal.notes && <p className="whitespace-pre-line text-sm">{goal.notes}</p>}
@@ -83,7 +103,8 @@ export function GoalCard({ goal, topics, today }: { goal: Goal; topics: TopicNod
                 />
               </div>
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {done}/{total} konu
+                {done}/{total} başlık
+                {time.planned > 0 && ` · ${formatTotal(time.worked)} / ${formatTotal(time.planned)} çalışıldı`}
               </span>
             </div>
           )}
@@ -109,8 +130,8 @@ export function GoalCard({ goal, topics, today }: { goal: Goal; topics: TopicNod
 
       {open && (
         <div className="space-y-2 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
-          <TopicTree nodes={topics} goalId={goal.id} today={today} />
-          <AddTopicForm goalId={goal.id} parentId={null} placeholder="Yeni konu" />
+          <TopicTree nodes={topics} goalId={goal.id} today={today} color={goal.color} worked={worked} />
+          <AddTopicForm goalId={goal.id} parentId={null} placeholder="Alt başlık ekle" />
         </div>
       )}
 

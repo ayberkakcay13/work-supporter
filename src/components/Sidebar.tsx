@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Bugün", icon: "☀️" },
+  { href: "/", label: "Ana ekran", icon: "🏠" },
   { href: "/hedefler", label: "Hedefler", icon: "🎯" },
   { href: "/takvim", label: "Takvim", icon: "📅" },
   { href: "/yapilacaklar", label: "Yapılacaklar", icon: "✅" },

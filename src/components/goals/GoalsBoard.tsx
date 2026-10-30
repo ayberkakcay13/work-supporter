@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { buildTopicTree, topicStatus, type Goal, type Topic } from "@/lib/goals";
+import { buildTopicTree, goalDate, topicStatus, type Goal, type Topic } from "@/lib/goals";
 import { loadSeedGoals } from "@/app/(app)/hedefler/actions";
 import { GoalCard } from "./GoalCard";
 import { GoalForm } from "./GoalForm";
@@ -12,11 +12,14 @@ export function GoalsBoard({
   topics,
   today,
   now,
+  worked,
 }: {
   goals: Goal[];
   topics: Topic[];
   today: string;
   now: string;
+  // Konu başına çalışılan süre (ms), sayaç oturumlarından.
+  worked: Record<string, number>;
 }) {
   const [creating, setCreating] = useState(false);
   const [showPast, setShowPast] = useState(false);
@@ -35,11 +38,13 @@ export function GoalsBoard({
     const end = g.ends_at ?? g.starts_at;
     return end !== null && end < now;
   };
-  const active = goals.filter((g) => !isPast(g));
+  // Tarihe göre sıralı; tarihsiz hedefler sonda.
+  const byDate = (a: Goal, b: Goal) => (goalDate(a) ?? "9999").localeCompare(goalDate(b) ?? "9999");
+  const active = goals.filter((g) => !isPast(g)).sort(byDate);
   const past = goals.filter(isPast);
 
   const card = (goal: Goal) => (
-    <GoalCard key={goal.id} goal={goal} topics={treeByGoal.get(goal.id) ?? []} today={today} />
+    <GoalCard key={goal.id} goal={goal} topics={treeByGoal.get(goal.id) ?? []} today={today} worked={worked} />
   );
 
   return (

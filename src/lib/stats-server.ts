@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Goal, Topic } from "@/lib/goals";
+import { TOPIC_COLUMNS, type Goal, type Topic } from "@/lib/goals";
 import { SESSION_COLUMNS, type Session } from "@/lib/sessions";
 
 // İstatistik ve özetler için gereken tüm veriler (tek kullanıcı, veri küçük).
@@ -10,7 +10,7 @@ export async function fetchStatsData() {
     supabase.from("sessions").select(SESSION_COLUMNS).eq("kind", "work").order("started_at"),
     supabase
       .from("topics")
-      .select("id, goal_id, parent_id, title, due_date, completed_at, miss_note, sort_order, created_at"),
+      .select(TOPIC_COLUMNS),
     supabase
       .from("goals")
       .select("id, type, title, course_code, starts_at, ends_at, location, color, notes")

@@ -10,8 +10,9 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, { Draggable } from "@fullcalendar/interaction";
 import luxonPlugin from "@fullcalendar/luxon3";
 import { ACADEMIC_MARKERS } from "@/lib/academic";
-import { buildTopicTree, localInputToIso, type Goal, type Topic, type TopicNode } from "@/lib/goals";
-import { DEFAULT_PLAN_COLOR, type Plan } from "@/lib/plans";
+import { buildTopicTree, type Goal, type Topic, type TopicNode } from "@/lib/goals";
+import { DEFAULT_PLAN_COLOR, planDuration, untimedRange, type Plan } from "@/lib/plans";
+import { formatTotal } from "@/lib/sessions";
 import { TIME_ZONE } from "@/lib/theme";
 import { movePlan, savePlan } from "@/app/(app)/takvim/actions";
 import { PlanForm, type PlanDraft, type TopicOption } from "./PlanForm";
@@ -21,11 +22,6 @@ const HOUR = 3_600_000;
 // Not: Adlandırılmış saat diliminde FullCalendar'ın Date nesneleri "UTC'ye zorlanmış" olur;
 // bu yüzden her yerde ofset içeren metin değerleri (startStr, dateStr…) kullanılır.
 
-// FullCalendar'ın gün değeri ("2026-11-05") için varsayılan saat: 09:00–10:00 İstanbul.
-function dayToRange(day: string): { start: string; end: string } {
-  const start = localInputToIso(`${day}T09:00`)!;
-  return { start, end: new Date(Date.parse(start) + HOUR).toISOString() };
-}
 
 function addDay(day: string): string {
   const d = new Date(`${day}T00:00:00Z`);
@@ -68,9 +64,10 @@ export function CalendarBoard({ goals, topics, plans }: { goals: Goal[]; topics:
     for (const p of plans) {
       list.push({
         id: `plan:${p.id}`,
-        title: p.title,
-        start: p.starts_at,
-        end: p.ends_at,
+        // Saatsiz plan gün boyu etiket olarak, süresiyle gösterilir; sadece başka güne taşınabilir.
+        ...(p.untimed
+          ? { title: `${p.title} · ${formatTotal(planDuration(p))}`, start: istanbulDay(p.starts_at), allDay: true, durationEditable: false }
+          : { title: p.title, start: p.starts_at, end: p.ends_at }),
         color: (p.goal_id && goalById.get(p.goal_id)?.color) || DEFAULT_PLAN_COLOR,
         editable: true,
         classNames: p.done ? ["fc-plan-done"] : [],
@@ -79,7 +76,21 @@ export function CalendarBoard({ goals, topics, plans }: { goals: Goal[]; topics:
     }
 
     for (const g of goals) {
-      if (!g.starts_at) continue;
+      // Sadece bitiş tarihi olan hedef o günde gün boyu etiket olarak görünür.
+      if (!g.starts_at) {
+        if (g.ends_at) {
+          list.push({
+            id: `goal:${g.id}`,
+            title: `🎯 ${g.title}`,
+            start: istanbulDay(g.ends_at),
+            allDay: true,
+            color: g.color,
+            editable: false,
+            classNames: ["fc-goal"],
+          });
+        }
+        continue;
+      }
       const icon = g.type === "sınav" ? "📝" : g.type === "proje" ? "📁" : "🎯";
       const multiDay = g.ends_at && istanbulDay(g.starts_at) !== istanbulDay(g.ends_at);
       list.push({
@@ -132,19 +143,22 @@ export function CalendarBoard({ goals, topics, plans }: { goals: Goal[]; topics:
     return () => draggable.destroy();
   }, []);
 
-  function newDraft(start: string, end: string, extra: Partial<PlanDraft> = {}): PlanDraft {
-    return { id: null, title: "", goal_id: null, topic_id: null, starts_at: start, ends_at: end, done: false, ...extra };
+  function newDraft(start: string, end: string, untimed: boolean): PlanDraft {
+    return { id: null, title: "", goal_id: null, topic_id: null, starts_at: start, ends_at: end, done: false, untimed };
   }
 
   async function handleMove(info: EventChangeArg) {
     const plan = info.event.extendedProps.plan as Plan | undefined;
-    // Planlar saatli kalmalı; tüm gün satırına bırakılırsa geri alınır.
-    if (!plan || info.event.allDay || !info.event.end) {
+    // Saatli plan saatli, saatsiz plan gün boyu satırda kalmalı; aksi halde geri alınır.
+    if (!plan || info.event.allDay !== plan.untimed || (!plan.untimed && !info.event.end)) {
       info.revert();
       return;
     }
+    const range = plan.untimed
+      ? untimedRange(info.event.startStr.slice(0, 10), planDuration(plan) / 60_000)
+      : { starts_at: info.event.startStr, ends_at: info.event.endStr };
     setError(null);
-    const result = await movePlan(plan.id, info.event.startStr, info.event.endStr);
+    const result = await movePlan(plan.id, range.starts_at, range.ends_at);
     if (result.error) {
       info.revert();
       setError(result.error);
@@ -172,22 +186,27 @@ export function CalendarBoard({ goals, topics, plans }: { goals: Goal[]; topics:
           selectable
           droppable
           select={(info) => {
-            const range = info.allDay ? dayToRange(info.startStr) : { start: info.startStr, end: info.endStr };
-            setDraft(newDraft(range.start, range.end));
+            // Ay görünümünde güne tıklamak saatsiz (1 saatlik) plan açar.
+            if (info.allDay) {
+              const range = untimedRange(info.startStr, 60);
+              setDraft(newDraft(range.starts_at, range.ends_at, true));
+            } else {
+              setDraft(newDraft(info.startStr, info.endStr, false));
+            }
             info.view.calendar.unselect();
           }}
           drop={(info) => {
             const el = info.draggedEl;
             const range = info.allDay
-              ? dayToRange(info.dateStr)
-              : { start: info.dateStr, end: new Date(Date.parse(info.dateStr) + HOUR).toISOString() };
+              ? untimedRange(info.dateStr, 60)
+              : { starts_at: info.dateStr, ends_at: new Date(Date.parse(info.dateStr) + HOUR).toISOString() };
             setError(null);
             savePlan(null, {
               title: el.dataset.title ?? "",
-              starts_at: range.start,
-              ends_at: range.end,
+              ...range,
               goal_id: el.dataset.goalId ?? null,
               topic_id: el.dataset.topicId ?? null,
+              untimed: info.allDay,
             }).then((result) => result.error && setError(result.error));
           }}
           eventClick={(info) => {

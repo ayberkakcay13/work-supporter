@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { localInputToIso, type Goal, type Topic } from "@/lib/goals";
+import { goalDate, localInputToIso, type Goal, type Topic, TOPIC_COLUMNS } from "@/lib/goals";
 import { PLAN_COLUMNS, type Plan } from "@/lib/plans";
 import { TODO_COLUMNS, shiftPeriod, type Todo, type TodoScope } from "@/lib/todos";
 import type { GoalOption } from "@/components/todos/TodoList";
@@ -42,13 +42,10 @@ export async function fetchPeriodOverview(scope: TodoScope, periodStart: string)
   const [goals, topics, plans] = await Promise.all([
     supabase
       .from("goals")
-      .select("id, type, title, course_code, starts_at, ends_at, location, color, notes")
-      .not("starts_at", "is", null)
-      .lt("starts_at", to)
-      .order("starts_at"),
+      .select("id, type, title, course_code, starts_at, ends_at, location, color, notes"),
     supabase
       .from("topics")
-      .select("id, goal_id, parent_id, title, due_date, completed_at, miss_note, sort_order, created_at")
+      .select(TOPIC_COLUMNS)
       .gte("due_date", periodStart)
       .lt("due_date", periodEnd)
       .order("due_date"),
@@ -59,8 +56,14 @@ export async function fetchPeriodOverview(scope: TodoScope, periodStart: string)
     return { error: (goals.error ?? topics.error ?? plans.error)!.message } as const;
   }
 
-  // Bitişi (yoksa başlangıcı) dönemin başından önce olan hedefler dışarıda kalır.
-  const inPeriod = (goals.data as Goal[]).filter((g) => Date.parse((g.ends_at ?? g.starts_at)!) >= Date.parse(from));
+  // Dönemle kesişen hedefler: başlangıcı (yoksa bitişi) dönem bitmeden, bitişi (yoksa başlangıcı) dönem başladıktan sonra.
+  const inPeriod = (goals.data as Goal[])
+    .filter((g) => {
+      const start = g.starts_at ?? g.ends_at;
+      const end = g.ends_at ?? g.starts_at;
+      return start && end && Date.parse(start) < Date.parse(to) && Date.parse(end) >= Date.parse(from);
+    })
+    .sort((a, b) => goalDate(a)!.localeCompare(goalDate(b)!));
 
   return { goals: inPeriod, topics: topics.data as Topic[], plans: plans.data as Plan[] } as const;
 }

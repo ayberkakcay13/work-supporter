@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { formatInTimeZone } from "@/lib/dates";
 import { STATUS_STYLES, topicStatus, type Goal, type Topic } from "@/lib/goals";
-import { DEFAULT_PLAN_COLOR, type Plan } from "@/lib/plans";
+import { DEFAULT_PLAN_COLOR, planDuration, type Plan } from "@/lib/plans";
+import { formatTotal } from "@/lib/sessions";
 import type { TodoScope } from "@/lib/todos";
 
 const GOAL_ICONS = { sınav: "📝", proje: "📁", diğer: "🎯" } as const;
@@ -42,7 +43,12 @@ export function PeriodOverview({
                   {GOAL_ICONS[g.type]} {g.title}
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {[when(g.starts_at!), g.location].filter(Boolean).join(" · ")}
+                  {[
+                    g.starts_at ? when(g.starts_at) : `Bitiş: ${dueDay(formatInTimeZone(new Date(g.ends_at!), "yyyy-MM-dd"))}`,
+                    g.location,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
             </li>
@@ -84,7 +90,9 @@ export function PeriodOverview({
               <div className="min-w-0">
                 <p className={p.done ? "text-zinc-400 line-through dark:text-zinc-500" : ""}>{p.title}</p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {when(p.starts_at)}–{formatInTimeZone(new Date(p.ends_at), "HH:mm")}
+                  {p.untimed
+                    ? `${scope === "day" ? "" : `${dueDay(formatInTimeZone(new Date(p.starts_at), "yyyy-MM-dd"))} · `}${formatTotal(planDuration(p))}`
+                    : `${when(p.starts_at)}–${formatInTimeZone(new Date(p.ends_at), "HH:mm")}`}
                 </p>
               </div>
             </li>

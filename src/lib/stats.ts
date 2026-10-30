@@ -1,5 +1,6 @@
 import { localInputToIso, topicStatus, type Goal, type Topic } from "@/lib/goals";
 import { workTotal, type Session } from "@/lib/sessions";
+import { planDuration, type Plan } from "@/lib/plans";
 import { periodLabel, shiftPeriod } from "@/lib/todos";
 
 export type ReviewPeriod = "week" | "month";
@@ -82,4 +83,47 @@ export function summarizePeriod(
 
 export function hasActivity(s: PeriodSummary): boolean {
   return s.totalMs > 0 || s.onTime + s.late + s.overdue > 0;
+}
+
+export type CourseProgress = { key: string; label: string; color: string; plannedMs: number; workedMs: number };
+
+// Ders bazlı planlanan / çalışılan süre. Çalışma, sayaçta seçilen hedefin dersine yazılır;
+// aynı ders kodlu hedefler birleşir. Hedefsiz plan ve oturumlar "Diğer" altında toplanır.
+export function planVsWork(
+  plans: Pick<Plan, "goal_id" | "starts_at" | "ends_at">[],
+  sessions: Session[],
+  goals: Pick<Goal, "id" | "title" | "course_code" | "color">[],
+  from: number,
+  to: number,
+  now: number,
+): CourseProgress[] {
+  const goalById = new Map(goals.map((g) => [g.id, g]));
+  const groups = new Map<string, CourseProgress>();
+
+  const group = (goalId: string | null) => {
+    const goal = goalId ? goalById.get(goalId) : undefined;
+    const key = goal ? (goal.course_code ?? goal.id) : "_";
+    let g = groups.get(key);
+    if (!g) {
+      g = {
+        key,
+        label: goal ? (goal.course_code ?? goal.title) : "Diğer",
+        color: goal?.color ?? NO_GOAL_COLOR,
+        plannedMs: 0,
+        workedMs: 0,
+      };
+      groups.set(key, g);
+    }
+    return g;
+  };
+
+  for (const p of plans) group(p.goal_id).plannedMs += planDuration(p);
+  for (const s of sessions) {
+    if (s.kind !== "work") continue;
+    const ms = workTotal([s], from, to, now);
+    if (ms > 0) group(s.goal_id).workedMs += ms;
+  }
+
+  // Planı olan dersler önce (büyükten küçüğe), sonra plansız çalışılanlar.
+  return [...groups.values()].sort((a, b) => b.plannedMs - a.plannedMs || b.workedMs - a.workedMs);
 }

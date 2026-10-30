@@ -1,132 +1,139 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { format, parseISO } from "date-fns";
+import { tr } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
 import { istanbulToday, localInputToIso } from "@/lib/goals";
-import { PLAN_COLUMNS, type Plan } from "@/lib/plans";
+import { PLAN_COLUMNS, planDuration, type Plan } from "@/lib/plans";
 import { TodayHeader } from "@/components/TodayHeader";
-import { TodayPlans } from "@/components/TodayPlans";
-import { TodoList } from "@/components/todos/TodoList";
-import { fetchTodoData } from "@/lib/todos-server";
-import { periodStart } from "@/lib/todos";
-import { requestTime } from "@/lib/dates";
-import { formatTotal, SESSION_COLUMNS, workTotal, type Session } from "@/lib/sessions";
-import { TimerShortcut } from "@/components/timer/TimerShortcut";
+import { TodayPlans, WeekPlans, type PlanGoal } from "@/components/TodayPlans";
+import { WeekProgressChart, type DayProgress } from "@/components/stats/WeekProgressChart";
+import { periodLabel, periodStart, shiftPeriod } from "@/lib/todos";
+import { formatInTimeZone, requestTime } from "@/lib/dates";
+import { SESSION_COLUMNS, workTotal, type Session } from "@/lib/sessions";
+import { dayStartMs, planVsWork } from "@/lib/stats";
+import { CourseList, CourseRing } from "@/components/stats/CourseProgress";
 
-export default function TodayPage() {
+export default function HomePage() {
   return (
     <div className="space-y-6">
       <TodayHeader />
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="card">
-          <h2 className="mb-2 font-medium">Bugünün planları</h2>
-          <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
-            <TodayPlansData />
-          </Suspense>
-        </section>
-        <section className="card">
-          <h2 className="mb-2 font-medium">Günlük yapılacaklar</h2>
-          <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
-            <TodayTodosData />
-          </Suspense>
-        </section>
-        <section className="card">
-          <h2 className="mb-2 font-medium">Sayaç</h2>
-          <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
-            <TimerShortcutData />
-          </Suspense>
-        </section>
-        <section className="card">
-          <h2 className="mb-2 font-medium">Çalışma süresi</h2>
-          <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
-            <StudyTotals />
-          </Suspense>
-        </section>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Suspense
+          fallback={
+            <section className="card lg:col-span-2">
+              <h2 className="mb-3 text-lg font-semibold">Bugünün planları</h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>
+            </section>
+          }
+        >
+          <HomeData />
+        </Suspense>
       </div>
     </div>
   );
 }
 
-async function TodayPlansData() {
+// Bugünün ve haftanın planları (solda) ile planlanan / çalışılan süre (sağda).
+async function HomeData() {
   // Bugünün tarihi kullanıldığı için her istekte yeniden hesaplanır.
   await connection();
   const today = istanbulToday();
-  const dayStart = localInputToIso(`${today}T00:00`)!;
-  const dayEnd = new Date(Date.parse(dayStart) + 86_400_000).toISOString();
-
-  const supabase = await createClient();
-  const [plans, goals] = await Promise.all([
-    supabase
-      .from("plans")
-      .select(PLAN_COLUMNS)
-      .lt("starts_at", dayEnd)
-      .gt("ends_at", dayStart)
-      .order("starts_at"),
-    supabase.from("goals").select("id, color"),
-  ]);
-
-  if (plans.error || goals.error) {
-    const message = (plans.error ?? goals.error)!.message;
-    return <p className="text-sm text-red-600 dark:text-red-400">Planlar yüklenemedi: {message}</p>;
-  }
-
-  const colors = Object.fromEntries(goals.data.map((g) => [g.id, g.color]));
-  return <TodayPlans plans={plans.data as Plan[]} colors={colors} />;
-}
-
-async function TodayTodosData() {
-  // Bugünün tarihi kullanıldığı için her istekte yeniden hesaplanır.
-  await connection();
-  const today = istanbulToday();
-  const data = await fetchTodoData("day", today);
-  if ("error" in data) return <p className="text-sm text-red-600 dark:text-red-400">Yüklenemedi: {data.error}</p>;
-
-  return (
-    <TodoList
-      todos={data.todos}
-      goals={data.allGoals}
-      goalOptions={data.goalOptions}
-      scope="day"
-      periodStart={today}
-      currentStart={today}
-    />
-  );
-}
-
-async function TimerShortcutData() {
-  await connection();
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("sessions").select(SESSION_COLUMNS).is("ended_at", null).maybeSingle<Session>();
-  if (error) return <p className="text-sm text-red-600 dark:text-red-400">Yüklenemedi: {error.message}</p>;
-  return <TimerShortcut key={data?.id ?? "bos"} open={data} serverNow={requestTime()} />;
-}
-
-async function StudyTotals() {
-  // Bugünün tarihi kullanıldığı için her istekte yeniden hesaplanır.
-  await connection();
-  const today = istanbulToday();
-  const dayStart = Date.parse(localInputToIso(`${today}T00:00`)!);
-  const weekStart = Date.parse(localInputToIso(`${periodStart("week", today)}T00:00`)!);
+  const weekStart = periodStart("week", today);
+  const weekEnd = shiftPeriod("week", weekStart, 1);
+  const from = localInputToIso(`${weekStart}T00:00`)!;
+  const to = localInputToIso(`${weekEnd}T00:00`)!;
   const now = requestTime();
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("sessions")
-    .select(SESSION_COLUMNS)
-    .eq("kind", "work")
-    .gte("started_at", new Date(weekStart).toISOString());
-  if (error) return <p className="text-sm text-red-600 dark:text-red-400">Yüklenemedi: {error.message}</p>;
+  const [plans, goals, open, sessions] = await Promise.all([
+    supabase.from("plans").select(PLAN_COLUMNS).lt("starts_at", to).gt("ends_at", from).order("starts_at"),
+    supabase
+      .from("goals")
+      .select("id, title, course_code, color, starts_at, ends_at")
+      .order("starts_at", { ascending: true, nullsFirst: false }),
+    supabase.from("sessions").select(SESSION_COLUMNS).is("ended_at", null).maybeSingle<Session>(),
+    supabase.from("sessions").select(SESSION_COLUMNS).eq("kind", "work").gte("started_at", from),
+  ]);
 
-  const sessions = data as Session[];
+  if (plans.error || goals.error || open.error || sessions.error) {
+    const message = (plans.error ?? goals.error ?? open.error ?? sessions.error)!.message;
+    return <section className="card text-sm text-red-600 dark:text-red-400 lg:col-span-3">Yüklenemedi: {message}</section>;
+  }
+
+  const allGoals: PlanGoal[] = goals.data.map(({ id, title, color }) => ({ id, title, color }));
+  // Plan eklerken sadece bitmemiş hedefler seçilebilir.
+  const activeGoals = allGoals.filter((_, i) => {
+    const g = goals.data[i];
+    const end = g.ends_at ?? g.starts_at;
+    return !end || Date.parse(end) >= now;
+  });
+
+  const dayOf = (iso: string) => formatInTimeZone(new Date(iso), "yyyy-MM-dd");
+  const all = plans.data as Plan[];
+  const work = sessions.data as Session[];
+  const weekDays = Array.from({ length: 7 }, (_, i) => shiftPeriod("day", weekStart, i));
+  const plansOn = (day: string) => all.filter((p) => dayOf(p.starts_at) === day);
+  const plannedOn = (day: string) => plansOn(day).reduce((sum, p) => sum + planDuration(p), 0);
+  const workedOn = (day: string) => workTotal(work, dayStartMs(day), dayStartMs(shiftPeriod("day", day, 1)), now);
+
+  const progress: DayProgress[] = weekDays.map((d) => ({
+    label: format(parseISO(d), "EEE", { locale: tr }),
+    detail: format(parseISO(d), "d MMMM EEEE", { locale: tr }),
+    plannedMs: plannedOn(d),
+    workedMs: workedOn(d),
+  }));
+  // Ders bazlı planlanan / çalışılan (bugün ve bu hafta).
+  const todayCourses = planVsWork(plansOn(today), work, goals.data, dayStartMs(today), dayStartMs(shiftPeriod("day", today, 1)), now);
+  const weekCourses = planVsWork(all, work, goals.data, dayStartMs(weekStart), dayStartMs(weekEnd), now);
+
+  const otherDays = weekDays
+    .filter((d) => d !== today)
+    .map((d) => ({ day: d, isPast: d < today, plans: plansOn(d) }));
+
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">Bugün</p>
-        <p className="text-2xl font-semibold tabular-nums">{formatTotal(workTotal(sessions, dayStart, now, now))}</p>
+    <>
+      <div className="space-y-4 lg:col-span-2">
+        <section className="card">
+          <h2 className="mb-3 text-lg font-semibold">Bugünün planları</h2>
+          <TodayPlans
+            plans={plansOn(today)}
+            goals={allGoals}
+            activeGoals={activeGoals}
+            today={today}
+            hasOpenSession={!!open.data}
+          />
+        </section>
+        <section className="card">
+          <h2 className="mb-3 font-medium">
+            Bu haftanın planları{" "}
+            <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">· {periodLabel("week", weekStart)}</span>
+          </h2>
+          <WeekPlans days={otherDays} goals={allGoals} activeGoals={activeGoals} />
+        </section>
       </div>
-      <div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">Bu hafta</p>
-        <p className="text-2xl font-semibold tabular-nums">{formatTotal(workTotal(sessions, weekStart, now, now))}</p>
-      </div>
-    </div>
+
+      <aside className="space-y-4">
+        <section className="card space-y-4">
+          <h2 className="font-medium">Bugün</h2>
+          <div className="flex flex-wrap items-center gap-5">
+            <CourseRing items={todayCourses} size={150} />
+            <div className="min-w-48 flex-1">
+              <CourseList items={todayCourses} />
+            </div>
+          </div>
+        </section>
+        <section className="card space-y-4">
+          <h2 className="font-medium">Bu hafta</h2>
+          <div className="flex flex-wrap items-center gap-5">
+            <CourseRing items={weekCourses} size={150} />
+            <div className="min-w-48 flex-1">
+              <CourseList items={weekCourses} />
+            </div>
+          </div>
+          <WeekProgressChart data={progress} />
+        </section>
+      </aside>
+    </>
   );
 }

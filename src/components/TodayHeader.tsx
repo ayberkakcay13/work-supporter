@@ -15,7 +15,7 @@ export function TodayHeader() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Bugün</h1>
+      <h1 className="text-2xl font-semibold">Ana ekran</h1>
       <p className="h-5 text-sm text-zinc-500 dark:text-zinc-400">{label}</p>
     </div>
   );

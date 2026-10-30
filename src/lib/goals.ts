@@ -28,7 +28,12 @@ export type Topic = {
   miss_note: string | null;
   sort_order: number;
   created_at: string;
+  // Çalışılacak süre (dakika); boş olabilir.
+  planned_minutes: number | null;
 };
+
+export const TOPIC_COLUMNS =
+  "id, goal_id, parent_id, title, due_date, completed_at, miss_note, sort_order, created_at, planned_minutes";
 
 export type TopicNode = Topic & { children: TopicNode[] };
 
@@ -99,4 +104,9 @@ export function isoToLocalInput(iso: string | null): string {
 export function daysUntil(iso: string, today: string): number {
   const target = formatInTimeZone(new Date(iso), "yyyy-MM-dd");
   return Math.round((Date.parse(target) - Date.parse(today)) / 86_400_000);
+}
+
+// Hedefin tarihi: sınav gibi saatli hedeflerde başlangıç, sadece bitiş tarihi girilmişse bitiş.
+export function goalDate(goal: Pick<Goal, "starts_at" | "ends_at">): string | null {
+  return goal.starts_at ?? goal.ends_at;
 }

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Goal, Topic } from "@/lib/goals";
+import { TOPIC_COLUMNS, type Goal, type Topic } from "@/lib/goals";
 import { PLAN_COLUMNS, type Plan } from "@/lib/plans";
 import { CalendarBoard } from "@/components/calendar/CalendarBoard";
 
@@ -27,7 +27,7 @@ async function CalendarData() {
       .order("starts_at", { ascending: true, nullsFirst: false }),
     supabase
       .from("topics")
-      .select("id, goal_id, parent_id, title, due_date, completed_at, miss_note, sort_order, created_at"),
+      .select(TOPIC_COLUMNS),
     supabase.from("plans").select(PLAN_COLUMNS),
   ]);
 

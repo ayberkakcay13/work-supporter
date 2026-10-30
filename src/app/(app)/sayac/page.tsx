@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { buildTopicTree, istanbulToday, localInputToIso, type Topic, type TopicNode } from "@/lib/goals";
+import { buildTopicTree, istanbulToday, localInputToIso, type Topic, type TopicNode, TOPIC_COLUMNS } from "@/lib/goals";
 import { SESSION_COLUMNS, type Session } from "@/lib/sessions";
 import { Timer, type TimerGoal } from "@/components/timer/Timer";
 import { requestTime } from "@/lib/dates";
@@ -34,7 +34,7 @@ async function TimerData() {
     supabase.from("sessions").select(SESSION_COLUMNS).eq("kind", "work").order("started_at", { ascending: false }).limit(1).maybeSingle<Session>(),
     supabase.from("sessions").select(SESSION_COLUMNS).eq("kind", "break").order("started_at", { ascending: false }).limit(1).maybeSingle<Session>(),
     supabase.from("goals").select("id, title, color, starts_at, ends_at").order("starts_at", { ascending: true, nullsFirst: false }),
-    supabase.from("topics").select("id, goal_id, parent_id, title, due_date, completed_at, miss_note, sort_order, created_at"),
+    supabase.from("topics").select(TOPIC_COLUMNS),
     supabase.from("settings").select("default_work_min, default_break_min, sound_enabled").maybeSingle(),
   ]);
 

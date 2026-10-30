@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isoToLocalInput, localInputToIso, type Goal } from "@/lib/goals";
-import type { Plan } from "@/lib/plans";
+import { planDuration, untimedRange, type Plan } from "@/lib/plans";
+import { formatInTimeZone } from "@/lib/dates";
 import { deletePlan, savePlan } from "@/app/(app)/takvim/actions";
 import { useAction } from "@/components/useAction";
 
@@ -29,6 +30,10 @@ export function PlanForm({
   const [start, setStart] = useState(isoToLocalInput(draft.starts_at));
   const [end, setEnd] = useState(isoToLocalInput(draft.ends_at));
   const [isDone, setIsDone] = useState(draft.done);
+  // Saatsiz planda sadece gün ve kaç saat çalışılacağı girilir.
+  const [untimed, setUntimed] = useState(draft.untimed);
+  const [day, setDay] = useState(formatInTimeZone(new Date(draft.starts_at), "yyyy-MM-dd"));
+  const [hours, setHours] = useState(String(Math.round((planDuration(draft) / 3_600_000) * 100) / 100));
   const { pending, error, run } = useAction();
 
   useEffect(() => {
@@ -49,18 +54,23 @@ export function PlanForm({
         className="space-y-4 p-6"
         onSubmit={(e) => {
           e.preventDefault();
-          const starts_at = localInputToIso(start);
-          const ends_at = localInputToIso(end);
-          if (!starts_at || !ends_at) return;
+          const minutes = Math.round(Number(hours.replace(",", ".")) * 60);
+          const range = untimed
+            ? minutes > 0 && minutes <= 600 && day
+              ? untimedRange(day, minutes)
+              : null
+            : { starts_at: localInputToIso(start), ends_at: localInputToIso(end) };
+          if (!range?.starts_at || !range.ends_at) return;
           run(
             () =>
               savePlan(draft.id, {
                 title,
-                starts_at,
-                ends_at,
+                starts_at: range.starts_at!,
+                ends_at: range.ends_at!,
                 goal_id: goalId || null,
                 topic_id: topicId || null,
                 done: isDone,
+                untimed,
               }),
             close,
           );
@@ -114,16 +124,53 @@ export function PlanForm({
           <input value={title} onChange={(e) => setTitle(e.target.value)} required className="input" autoFocus />
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">Başlangıç</span>
-            <input type="datetime-local" required value={start} onChange={(e) => setStart(e.target.value)} className="input" />
-          </label>
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">Bitiş</span>
-            <input type="datetime-local" required value={end} onChange={(e) => setEnd(e.target.value)} className="input" />
-          </label>
+        <div className="flex rounded-lg bg-zinc-100 p-0.5 text-sm dark:bg-zinc-800">
+          {[true, false].map((value) => (
+            <button
+              key={String(value)}
+              type="button"
+              onClick={() => setUntimed(value)}
+              className={`flex-1 rounded-md px-3 py-1.5 ${
+                untimed === value ? "bg-white font-medium shadow-sm dark:bg-zinc-700" : "text-zinc-500 dark:text-zinc-400"
+              }`}
+            >
+              {value ? "Sadece süre" : "Belirli saatler"}
+            </button>
+          ))}
         </div>
+
+        {untimed ? (
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">Gün</span>
+              <input type="date" required value={day} onChange={(e) => setDay(e.target.value)} className="input" />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">Kaç saat</span>
+              <input
+                type="number"
+                required
+                min={0.5}
+                max={10}
+                step={0.5}
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                className="input"
+              />
+            </label>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">Başlangıç</span>
+              <input type="datetime-local" required value={start} onChange={(e) => setStart(e.target.value)} className="input" />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">Bitiş</span>
+              <input type="datetime-local" required value={end} onChange={(e) => setEnd(e.target.value)} className="input" />
+            </label>
+          </div>
+        )}
 
         {draft.id && (
           <label className="flex items-center gap-2 text-sm">

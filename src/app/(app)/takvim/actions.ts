@@ -11,6 +11,7 @@ export type PlanInput = {
   goal_id: string | null;
   topic_id: string | null;
   done?: boolean;
+  untimed?: boolean;
 };
 
 // RLS zaten sadece sahibine izin verir; burada giriş yapılmış olmasını da kontrol ediyoruz.
