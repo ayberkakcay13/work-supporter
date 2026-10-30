@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -95,7 +96,12 @@ async function HomeData() {
     <>
       <div className="space-y-4 lg:col-span-2">
         <section className="card">
-          <h2 className="mb-3 text-lg font-semibold">Bugünün planları</h2>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Bugünün planları</h2>
+            <Link href="/gun-plani" className="btn-secondary px-3 py-1.5 text-xs">
+              🗓 Gün planı
+            </Link>
+          </div>
           <TodayPlans
             plans={plansOn(today)}
             goals={allGoals}
