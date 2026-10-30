@@ -81,3 +81,17 @@
 .calendar .fc-topic-due {
   border-style: dashed;
 }
+
+/* Recharts: ızgara ve eksen metni temaya uyar */
+.chart .recharts-cartesian-grid line {
+  stroke: #e4e4e7;
+}
+.dark .chart .recharts-cartesian-grid line {
+  stroke: #27272a;
+}
+.chart .recharts-cartesian-axis-tick-value {
+  fill: #71717a;
+}
+.dark .chart .recharts-cartesian-axis-tick-value {
+  fill: #a1a1aa;
+}
