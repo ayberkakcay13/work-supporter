@@ -4,7 +4,7 @@ import { useState } from "react";
 import { formatInTimeZone } from "@/lib/dates";
 import { topicStatus, type TopicNode, type TopicStatus } from "@/lib/goals";
 import { addTopic, deleteTopic, setTopicDone, updateTopic } from "@/app/(app)/hedefler/actions";
-import { useAction } from "./useAction";
+import { useAction } from "@/components/useAction";
 
 const STATUS_STYLES: Record<TopicStatus, string> = {
   bekliyor: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",

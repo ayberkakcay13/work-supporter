@@ -36,3 +36,48 @@
     @apply rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900;
   }
 }
+
+/* FullCalendar: uygulama renklerine ve koyu temaya uyum */
+.calendar {
+  --fc-border-color: #e4e4e7;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #fafafa;
+  --fc-today-bg-color: color-mix(in oklab, #6366f1 8%, transparent);
+  --fc-button-bg-color: #f4f4f5;
+  --fc-button-border-color: #d4d4d8;
+  --fc-button-text-color: #3f3f46;
+  --fc-button-hover-bg-color: #e4e4e7;
+  --fc-button-hover-border-color: #d4d4d8;
+  --fc-button-active-bg-color: #4f46e5;
+  --fc-button-active-border-color: #4f46e5;
+  --fc-now-indicator-color: #ef4444;
+  font-size: 0.85rem;
+}
+.dark .calendar {
+  --fc-border-color: #27272a;
+  --fc-neutral-bg-color: #18181b;
+  --fc-list-event-hover-bg-color: #27272a;
+  --fc-button-bg-color: #27272a;
+  --fc-button-border-color: #3f3f46;
+  --fc-button-text-color: #e4e4e7;
+  --fc-button-hover-bg-color: #3f3f46;
+  --fc-button-hover-border-color: #52525b;
+}
+.calendar .fc-button-active {
+  color: white !important;
+}
+.calendar .fc-toolbar-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.calendar .fc-button {
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+.calendar .fc-plan-done {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.calendar .fc-topic-due {
+  border-style: dashed;
+}

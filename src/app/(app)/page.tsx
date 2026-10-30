@@ -1,4 +1,10 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { istanbulToday, localInputToIso } from "@/lib/goals";
+import { PLAN_COLUMNS, type Plan } from "@/lib/plans";
 import { TodayHeader } from "@/components/TodayHeader";
+import { TodayPlans } from "@/components/TodayPlans";
 
 export default function TodayPage() {
   return (
@@ -7,7 +13,9 @@ export default function TodayPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <section className="card">
           <h2 className="mb-2 font-medium">Bugünün planları</h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Takvim 2. aşamada eklenecek.</p>
+          <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
+            <TodayPlansData />
+          </Suspense>
         </section>
         <section className="card">
           <h2 className="mb-2 font-medium">Günlük yapılacaklar</h2>
@@ -24,4 +32,31 @@ export default function TodayPage() {
       </div>
     </div>
   );
+}
+
+async function TodayPlansData() {
+  // Bugünün tarihi kullanıldığı için her istekte yeniden hesaplanır.
+  await connection();
+  const today = istanbulToday();
+  const dayStart = localInputToIso(`${today}T00:00`)!;
+  const dayEnd = new Date(Date.parse(dayStart) + 86_400_000).toISOString();
+
+  const supabase = await createClient();
+  const [plans, goals] = await Promise.all([
+    supabase
+      .from("plans")
+      .select(PLAN_COLUMNS)
+      .lt("starts_at", dayEnd)
+      .gt("ends_at", dayStart)
+      .order("starts_at"),
+    supabase.from("goals").select("id, color"),
+  ]);
+
+  if (plans.error || goals.error) {
+    const message = (plans.error ?? goals.error)!.message;
+    return <p className="text-sm text-red-600 dark:text-red-400">Planlar yüklenemedi: {message}</p>;
+  }
+
+  const colors = Object.fromEntries(goals.data.map((g) => [g.id, g.color]));
+  return <TodayPlans plans={plans.data as Plan[]} colors={colors} />;
 }

@@ -5,7 +5,7 @@ import { buildTopicTree, topicStatus, type Goal, type Topic } from "@/lib/goals"
 import { loadSeedGoals } from "@/app/(app)/hedefler/actions";
 import { GoalCard } from "./GoalCard";
 import { GoalForm } from "./GoalForm";
-import { useAction } from "./useAction";
+import { useAction } from "@/components/useAction";
 
 export function GoalsBoard({
   goals,

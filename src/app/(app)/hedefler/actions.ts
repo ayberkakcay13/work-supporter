@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GOAL_TYPES, localInputToIso, type GoalType } from "@/lib/goals";
 import { SEED_GOALS } from "@/lib/seed";
 
-export type ActionResult = { error?: string };
+import type { ActionResult } from "@/lib/action";
 
 // RLS zaten sadece sahibine izin verir; burada giriş yapılmış olmasını da kontrol ediyoruz.
 async function authed() {

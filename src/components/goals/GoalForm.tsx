@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { GOAL_TYPES, isoToLocalInput, type Goal } from "@/lib/goals";
 import { saveGoal } from "@/app/(app)/hedefler/actions";
-import { useAction } from "./useAction";
+import { useAction } from "@/components/useAction";
 
 const TYPE_LABELS = { sınav: "Sınav", proje: "Proje", diğer: "Diğer" } as const;
 

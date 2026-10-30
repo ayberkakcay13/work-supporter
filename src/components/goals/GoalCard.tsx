@@ -6,7 +6,7 @@ import { daysUntil, type Goal, type TopicNode } from "@/lib/goals";
 import { deleteGoal } from "@/app/(app)/hedefler/actions";
 import { GoalForm } from "./GoalForm";
 import { AddTopicForm, TopicTree } from "./TopicTree";
-import { useAction } from "./useAction";
+import { useAction } from "@/components/useAction";
 
 const TYPE_LABELS = { sınav: "Sınav", proje: "Proje", diğer: "Diğer" } as const;
 

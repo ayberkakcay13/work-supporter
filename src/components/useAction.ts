@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { ActionResult } from "@/app/(app)/hedefler/actions";
+import type { ActionResult } from "@/lib/action";
 
 // Sunucu eylemini geçiş içinde çalıştırır; hata mesajını ve bekleme durumunu tutar.
 export function useAction() {
