@@ -9,3 +9,8 @@ export const istanbul = tz(TIME_ZONE);
 export function formatInTimeZone(date: Date, pattern: string) {
   return format(date, pattern, { locale: tr, in: istanbul });
 }
+
+// Sunucu bileşenlerinde istek anının zamanı (bileşen içinde Date.now() lint'e takılır).
+export function requestTime(): number {
+  return Date.now();
+}

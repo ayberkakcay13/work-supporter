@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
+import { TimerSettings } from "@/components/TimerSettings";
 import { createClient } from "@/lib/supabase/client";
 import type { ThemePref } from "@/lib/theme";
 
@@ -53,9 +54,7 @@ export default function SettingsPage() {
 
       <section className="card space-y-2">
         <h2 className="font-medium">Sayaç</h2>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Varsayılan süreler ve ses ayarı 4. aşamada eklenecek.
-        </p>
+        <TimerSettings />
       </section>
 
       <section className="card flex items-center justify-between">
