@@ -5,6 +5,8 @@ import { istanbulToday, localInputToIso } from "@/lib/goals";
 import { PLAN_COLUMNS, type Plan } from "@/lib/plans";
 import { TodayHeader } from "@/components/TodayHeader";
 import { TodayPlans } from "@/components/TodayPlans";
+import { TodoList } from "@/components/todos/TodoList";
+import { fetchTodoData } from "@/lib/todos-server";
 
 export default function TodayPage() {
   return (
@@ -19,7 +21,9 @@ export default function TodayPage() {
         </section>
         <section className="card">
           <h2 className="mb-2 font-medium">Günlük yapılacaklar</h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Yapılacaklar 3. aşamada eklenecek.</p>
+          <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
+            <TodayTodosData />
+          </Suspense>
         </section>
         <section className="card">
           <h2 className="mb-2 font-medium">Sayaç</h2>
@@ -59,4 +63,23 @@ async function TodayPlansData() {
 
   const colors = Object.fromEntries(goals.data.map((g) => [g.id, g.color]));
   return <TodayPlans plans={plans.data as Plan[]} colors={colors} />;
+}
+
+async function TodayTodosData() {
+  // Bugünün tarihi kullanıldığı için her istekte yeniden hesaplanır.
+  await connection();
+  const today = istanbulToday();
+  const data = await fetchTodoData("day", today);
+  if ("error" in data) return <p className="text-sm text-red-600 dark:text-red-400">Yüklenemedi: {data.error}</p>;
+
+  return (
+    <TodoList
+      todos={data.todos}
+      goals={data.allGoals}
+      goalOptions={data.goalOptions}
+      scope="day"
+      periodStart={today}
+      currentStart={today}
+    />
+  );
 }

@@ -2,17 +2,9 @@
 
 import { useState } from "react";
 import { formatInTimeZone } from "@/lib/dates";
-import { topicStatus, type TopicNode, type TopicStatus } from "@/lib/goals";
+import { STATUS_STYLES, topicStatus, type TopicNode } from "@/lib/goals";
 import { addTopic, deleteTopic, setTopicDone, updateTopic } from "@/app/(app)/hedefler/actions";
 import { useAction } from "@/components/useAction";
-
-const STATUS_STYLES: Record<TopicStatus, string> = {
-  bekliyor: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
-  "zamanında tamamlandı": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  "geç tamamlandı": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  "gecikti (not bekliyor)": "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-  "gecikti (notlu)": "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
-};
 
 function formatDue(date: string) {
   // "yyyy-MM-dd" gün olarak gösterilir; öğlen alınarak saat dilimi kayması önlenir.

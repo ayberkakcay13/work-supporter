@@ -39,6 +39,15 @@ export type TopicStatus =
   | "gecikti (not bekliyor)"
   | "gecikti (notlu)";
 
+// Durum etiketlerinin renkleri.
+export const STATUS_STYLES: Record<TopicStatus, string> = {
+  bekliyor: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+  "zamanında tamamlandı": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  "geç tamamlandı": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  "gecikti (not bekliyor)": "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
+  "gecikti (notlu)": "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+};
+
 // Bugünün tarihi İstanbul saatine göre, "yyyy-MM-dd".
 export function istanbulToday(now: Date = new Date()): string {
   return formatInTimeZone(now, "yyyy-MM-dd");
