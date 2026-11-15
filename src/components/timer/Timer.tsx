@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { formatInTimeZone } from "@/lib/dates";
 import { formatClock, formatTotal, plannedEnd, sessionDuration, workTotal, type Session, type SessionKind } from "@/lib/sessions";
 import { notify, playChime, requestNotificationPermission } from "@/lib/sound";
@@ -17,6 +17,7 @@ type Defaults = {
   topicId: string;
 };
 
+const noopSubscribe = () => () => {};
 const KIND_LABELS: Record<SessionKind, string> = { work: "Çalışma", break: "Mola" };
 const QUICK_MINUTES: Record<SessionKind, number[]> = { work: [25, 50, 90], break: [5, 10, 15] };
 const KIND_COLORS: Record<SessionKind, { ring: string; text: string }> = {
@@ -49,6 +50,12 @@ export function Timer({
   const [todaySessions, setTodaySessions] = useState(initialSessions);
   const [lastEnded, setLastEnded] = useState(initialLastEnded);
   const [toast, setToast] = useState<string | null>(null);
+  // iPhone Safari öğe tam ekranını desteklemez; orada düğme gizlenir.
+  const canFullscreen = useSyncExternalStore(
+    noopSubscribe,
+    () => document.fullscreenEnabled,
+    () => true,
+  );
   const handledRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -187,7 +194,7 @@ export function Timer({
       {toast && (
         <div
           role="alert"
-          className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-50 max-w-[calc(100vw-2rem)] md:bottom-4 -translate-x-1/2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg"
         >
           {toast}
         </div>
@@ -195,7 +202,7 @@ export function Timer({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sayaç</h1>
         <button
-          className="btn-secondary"
+          className={`btn-secondary ${canFullscreen ? "" : "hidden"}`}
           onClick={() =>
             document.fullscreenElement ? document.exitFullscreen() : containerRef.current?.requestFullscreen()
           }
@@ -206,7 +213,7 @@ export function Timer({
 
       <div
         ref={containerRef}
-        className="card flex flex-col items-center gap-6 bg-white py-8 dark:bg-zinc-900 [&:fullscreen]:justify-center [&:fullscreen]:rounded-none [&:fullscreen]:border-0"
+        className="card flex flex-col items-center gap-6 bg-white px-4 py-6 md:px-5 md:py-8 dark:bg-zinc-900 [&:fullscreen]:justify-center [&:fullscreen]:rounded-none [&:fullscreen]:border-0"
       >
         {justEnded && (
           <p className="text-center font-medium">
@@ -220,7 +227,7 @@ export function Timer({
           <p className={`text-xs font-semibold uppercase tracking-widest ${KIND_COLORS[shownKind].text}`}>
             {KIND_LABELS[shownKind]}
           </p>
-          <p className="font-mono text-6xl font-semibold tabular-nums">{formatClock(elapsed)}</p>
+          <p className="font-mono text-5xl font-semibold tabular-nums sm:text-6xl">{formatClock(elapsed)}</p>
           <p className="h-4 text-xs text-zinc-500 dark:text-zinc-400">
             {open
               ? end !== null
@@ -232,14 +239,14 @@ export function Timer({
           </p>
           {open ? (
             <button
-              className="mt-2 rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+              className="mt-2 min-h-12 rounded-full bg-zinc-900 px-8 py-3 text-base md:min-h-0 md:px-6 md:py-2 md:text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
               onClick={() => finish(open, endTime(open, Date.now()))}
             >
               ■ Durdur
             </button>
           ) : (
             <button
-              className="mt-2 rounded-full bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
+              className="mt-2 min-h-12 rounded-full bg-indigo-600 px-8 py-3 text-base md:min-h-0 md:px-6 md:py-2 md:text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
               disabled={!alarmValid}
               onClick={start}
             >
@@ -268,7 +275,7 @@ export function Timer({
                     key={k}
                     type="button"
                     onClick={() => setKind(k)}
-                    className={`flex-1 rounded-md px-3 py-1.5 ${
+                    className={`flex-1 rounded-md px-3 py-2.5 md:py-1.5 ${
                       kind === k ? "bg-white font-medium shadow-sm dark:bg-zinc-700" : "text-zinc-500 dark:text-zinc-400"
                     }`}
                   >
@@ -285,7 +292,7 @@ export function Timer({
                     key={m}
                     type="button"
                     onClick={() => setAlarm({ ...alarm, [kind]: String(m) })}
-                    className={`rounded-full border px-3 py-1 text-sm ${
+                    className={`min-h-11 rounded-full border px-4 py-1 text-sm md:min-h-0 md:px-3 ${
                       alarm[kind] === String(m)
                         ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
                         : "border-zinc-300 dark:border-zinc-700"
@@ -302,14 +309,14 @@ export function Timer({
                     placeholder="—"
                     value={alarm[kind]}
                     onChange={(e) => setAlarm({ ...alarm, [kind]: e.target.value })}
-                    className="input w-20 py-1"
+                    className="input w-20 py-2 md:py-1"
                   />
                   dk
                 </label>
                 <button
                   type="button"
                   onClick={() => setAlarm({ ...alarm, [kind]: "" })}
-                  className={`rounded-full border px-3 py-1 text-sm ${
+                  className={`min-h-11 rounded-full border px-4 py-1 text-sm md:min-h-0 md:px-3 ${
                     alarm[kind] === ""
                       ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
                       : "border-zinc-300 dark:border-zinc-700"
@@ -371,22 +378,22 @@ export function Timer({
             {[...todaySessions].reverse().map((s) => {
               const goal = s.goal_id ? goals.find((g) => g.id === s.goal_id) : undefined;
               return (
-                <li key={s.id} className="group flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <span className="w-28 shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400">
+                <li key={s.id} className="group flex items-center gap-2 rounded-lg px-2 py-1 md:gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                  <span className="w-24 shrink-0 text-xs md:w-28 text-zinc-500 tabular-nums dark:text-zinc-400">
                     {formatInTimeZone(new Date(s.started_at), "HH:mm")}–
                     {s.ended_at ? formatInTimeZone(new Date(s.ended_at), "HH:mm") : "…"}
                   </span>
                   <span className={`w-16 shrink-0 text-xs font-medium ${KIND_COLORS[s.kind].text}`}>{KIND_LABELS[s.kind]}</span>
                   <span className="w-20 shrink-0 tabular-nums">{formatTotal(sessionDuration(s, now))}</span>
                   {goal && (
-                    <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                    <span className="hidden truncate text-xs text-zinc-500 sm:inline dark:text-zinc-400">
                       <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: goal.color }} />
                       {goal.title}
                     </span>
                   )}
                   {s.ended_at && (
                     <button
-                      className="btn-ghost ml-auto text-red-600 opacity-0 group-hover:opacity-100 dark:text-red-400"
+                      className="btn-ghost ml-auto px-3 py-2 text-red-600 md:px-2 md:py-1 can-hover:opacity-0 group-hover:opacity-100 dark:text-red-400"
                       onClick={() => remove(s)}
                     >
                       Sil
@@ -418,7 +425,7 @@ function Dial({
   const r = 130;
   const circumference = 2 * Math.PI * r;
   return (
-    <div className="relative h-72 w-72 [:fullscreen_&]:h-[28rem] [:fullscreen_&]:w-[28rem]">
+    <div className="relative aspect-square w-[min(18rem,calc(100vw-4rem))] [:fullscreen_&]:w-[min(28rem,90vw)]">
       <svg viewBox="0 0 300 300" className="absolute inset-0 h-full w-full -rotate-90">
         <circle cx="150" cy="150" r={r} fill="none" strokeWidth="10" className="stroke-zinc-200 dark:stroke-zinc-800" />
         <circle

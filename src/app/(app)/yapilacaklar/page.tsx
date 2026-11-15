@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { TodosBodySkeleton } from "@/components/Skeleton";
 import Link from "next/link";
 import { connection } from "next/server";
 import { istanbulToday } from "@/lib/goals";
@@ -12,7 +13,7 @@ import {
   shiftPeriod,
   type TodoScope,
 } from "@/lib/todos";
-import { fetchPeriodOverview, fetchTodoData } from "@/lib/todos-server";
+import { fetchTodoPage } from "@/lib/todos-server";
 import { TodoList } from "@/components/todos/TodoList";
 import { PeriodOverview } from "@/components/todos/PeriodOverview";
 
@@ -22,7 +23,7 @@ export default function YapilacaklarPage({ searchParams }: { searchParams: Searc
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Yapılacaklar</h1>
-      <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
+      <Suspense fallback={<TodosBodySkeleton />}>
         <TodosView searchParams={searchParams} />
       </Suspense>
     </div>
@@ -41,7 +42,7 @@ async function TodosView({ searchParams }: { searchParams: SearchParams }) {
   const start = periodStart(scope, day);
   const currentStart = periodStart(scope, today);
 
-  const [data, overview] = await Promise.all([fetchTodoData(scope, start), fetchPeriodOverview(scope, start)]);
+  const { data, overview } = await fetchTodoPage(scope, start);
 
   return (
     <div className="space-y-4">

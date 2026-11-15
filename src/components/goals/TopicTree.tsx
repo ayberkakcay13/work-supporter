@@ -79,7 +79,7 @@ function TopicItem({ node, goalId, today, color, worked }: TreeProps & { node: T
             <button className="btn-ghost ml-auto" onClick={() => setMode("add")}>
               + Alt başlık
             </button>
-            <span className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <span className="flex gap-1 can-hover:opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <button className="btn-ghost" onClick={() => setMode("edit")}>
                 Düzenle
               </button>

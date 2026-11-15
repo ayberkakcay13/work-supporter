@@ -102,7 +102,7 @@ function TodoItem({ todo, goal, moveTo }: { todo: Todo; goal?: GoalOption; moveT
                 {goal.title}
               </span>
             )}
-            <span className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <span className="flex shrink-0 gap-1 can-hover:opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               {moveTo && (
                 <button className="btn-ghost" disabled={pending} onClick={() => run(() => moveTodo(todo.id, moveTo))}>
                   Bu döneme taşı

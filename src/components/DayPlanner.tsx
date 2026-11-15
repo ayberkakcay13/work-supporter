@@ -255,7 +255,7 @@ export function DayPlanner({
                           e.stopPropagation();
                           remove(hour);
                         }}
-                        className="rounded px-1.5 text-zinc-400 opacity-0 hover:bg-black/5 hover:text-zinc-700 group-hover:opacity-100 dark:hover:bg-white/10 dark:hover:text-zinc-200"
+                        className="rounded px-1.5 text-zinc-400 can-hover:opacity-0 hover:bg-black/5 hover:text-zinc-700 group-hover:opacity-100 dark:hover:bg-white/10 dark:hover:text-zinc-200"
                       >
                         ×
                       </button>
@@ -267,7 +267,7 @@ export function DayPlanner({
                       onClick={() => startEditing(hour, "")}
                       className="group flex h-full min-h-13 w-full items-center px-3 text-left text-sm text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                     >
-                      <span className="opacity-0 group-hover:opacity-100">+ Not yaz</span>
+                      <span className="can-hover:opacity-0 group-hover:opacity-100">+ Not yaz</span>
                     </button>
                   )}
                 </div>

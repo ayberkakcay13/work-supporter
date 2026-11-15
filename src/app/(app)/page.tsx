@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { HomeBodySkeleton } from "@/components/Skeleton";
 import Link from "next/link";
 import { connection } from "next/server";
 import { format, parseISO } from "date-fns";
@@ -20,14 +21,7 @@ export default function HomePage() {
     <div className="space-y-6">
       <TodayHeader />
       <div className="grid gap-4 lg:grid-cols-3">
-        <Suspense
-          fallback={
-            <section className="card lg:col-span-2">
-              <h2 className="mb-3 text-lg font-semibold">Bugünün planları</h2>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>
-            </section>
-          }
-        >
+        <Suspense fallback={<HomeBodySkeleton />}>
           <HomeData />
         </Suspense>
       </div>

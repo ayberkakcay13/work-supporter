@@ -68,11 +68,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setPref = useCallback((next: ThemePref) => {
     storePref(next);
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
+    // getSession yerel oturumu okur; Auth sunucusuna ayrıca istek atmaz.
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) return;
       supabase
         .from("settings")
-        .upsert({ user_id: data.user.id, theme: next })
+        .upsert({ user_id: data.session.user.id, theme: next })
         .then(({ error }) => {
           if (error) console.error("Tema kaydedilemedi:", error.message);
         });

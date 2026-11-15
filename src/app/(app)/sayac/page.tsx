@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { TimerBodySkeleton } from "@/components/Skeleton";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildTopicTree, istanbulToday, localInputToIso, type Topic, type TopicNode, TOPIC_COLUMNS } from "@/lib/goals";
@@ -8,7 +9,7 @@ import { requestTime } from "@/lib/dates";
 
 export default function SayacPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
+    <Suspense fallback={<div className="space-y-6"><TimerBodySkeleton /></div>}>
       <TimerData />
     </Suspense>
   );

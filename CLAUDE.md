@@ -1,6 +1,6 @@
 # Çalışma Planlayıcı — Proje Rehberi
 
-Kişisel ders çalışma planlayıcısı. Tek kullanıcı (Ekrem), şimdilik sadece bilgisayar (masaüstü tarayıcı). Telefon desteği (PWA) daha sonra eklenecek.
+Kişisel ders çalışma planlayıcısı. Tek kullanıcı (Ekrem). Masaüstü tarayıcı ve telefon (ana ekrana eklenebilir PWA).
 
 ## Amaç
 - Sınav ve projeler **hedef** olarak girilir. Hedeflerin altında **konular** ve **alt başlıklar** vardır.
@@ -92,6 +92,15 @@ Takvim işaretleri (akademik takvim):
 4. **Sayaç**: 4 mod, ses + bildirim, oturum kaydı, hedef/konu seçimi
 5. **İstatistik + özetler**: grafikler, haftalık/aylık değerlendirme modalı
 6. **Yayın**: Vercel
-7. **Sonra**: telefon (PWA, mobil düzen)
+7. **Telefon + hız**: PWA (manifest, ikonlar), mobil düzen (alt sekme çubuğu, safe-area), yükleme iskeletleri
 
 Her aşama sonunda uygulama çalışır durumda olmalı ve kullanıcı deneyebilmeli.
+
+## İlerleme
+- **0–5 tamam**: kurulum, hedefler, takvim, yapılacaklar, sayaç, istatistik + özetler. Ek olarak ana ekran ve gün planı (saatlere ders yerleştirme).
+- **6. Yayın (Vercel)**: bu repoda yayın ayarı / kaydı yok; durumu kontrol edilmeli.
+- **7. Telefon + hız (2026-11-15)**:
+  - PWA: `src/app/manifest.ts` (standalone, 192/512 + maskable ikonlar `public/icons/`), `public/apple-touch-icon.png`, kök layout'ta `appleWebApp` ve `viewport` (`viewport-fit=cover`, tema rengi). Service worker / çevrimdışı çalışma **yok**.
+  - Mobil düzen (< 768 px): yan menü yerine altta sabit sekme çubuğu (`Sidebar.tsx`); `main` altta sekme çubuğu, üstte çentik kadar boşluk bırakır (`env(safe-area-inset-*)`). Takvim telefonda haftalık **liste** görünümüyle açılır, görünüm düğmeleri altta. Sayaç düğmeleri ve seçim çipleri en az 44 px. Girdiler telefonda 16 px (iOS yakınlaştırmasın). "Üzerine gelince görünen" düğmeler dokunmatikte hep görünür (`can-hover:` varyantı).
+  - Hız: her sayfada `loading.tsx` iskeleti (`components/Skeleton.tsx`); sunucu eylemleri `getUser()` yerine `getClaims()` kullanır (`authedClient()` in `lib/supabase/server.ts`); Yapılacaklar sayfası hedefleri bir kez çeker (5 → 4 sorgu); Ayarlar'daki sayaç ayarları tarayıcıdan sonradan değil sunucuda okunur. Middleware zaten `getClaims()` kullanıyordu.
+- **Sonra**: service worker (çevrimdışı açılış), iPhone açılış ekranı görselleri.

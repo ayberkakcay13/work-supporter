@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import type { EventChangeArg, EventInput } from "@fullcalendar/core";
 import trLocale from "@fullcalendar/core/locales/tr";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
 import interactionPlugin, { Draggable } from "@fullcalendar/interaction";
 import luxonPlugin from "@fullcalendar/luxon3";
 import { ACADEMIC_MARKERS } from "@/lib/academic";
@@ -22,6 +23,16 @@ const HOUR = 3_600_000;
 // Not: Adlandırılmış saat diliminde FullCalendar'ın Date nesneleri "UTC'ye zorlanmış" olur;
 // bu yüzden her yerde ofset içeren metin değerleri (startStr, dateStr…) kullanılır.
 
+
+// 768 px altı telefon sayılır; takvim orada liste görünümüyle açılır.
+const MOBILE_QUERY = "(max-width: 767px)";
+function subscribeMobile(onChange: () => void) {
+  const mq = window.matchMedia(MOBILE_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+const getMobile = () => window.matchMedia(MOBILE_QUERY).matches;
+const getServerMobile = () => false;
 
 function addDay(day: string): string {
   const d = new Date(`${day}T00:00:00Z`);
@@ -49,6 +60,7 @@ export function CalendarBoard({ goals, topics, plans }: { goals: Goal[]; topics:
   const panelRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<PlanDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isMobile = useSyncExternalStore(subscribeMobile, getMobile, getServerMobile);
 
   const goalById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
   const topicOptions = useMemo(() => flattenTopics(buildTopicTree(topics)), [topics]);
@@ -170,13 +182,24 @@ export function CalendarBoard({ goals, topics, plans }: { goals: Goal[]; topics:
       <div className="card calendar p-3">
         {error && <p className="mb-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
         <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin]}
+          // initialView sadece ilk kurulumda okunur; ekran türü değişince takvim yeniden kurulur.
+          key={isMobile ? "mobile" : "desktop"}
+          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, luxonPlugin]}
           locale={trLocale}
           timeZone={TIME_ZONE}
           firstDay={1}
-          initialView="dayGridMonth"
-          headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }}
-          height={720}
+          initialView={isMobile ? "listWeek" : "dayGridMonth"}
+          headerToolbar={
+            isMobile
+              ? { left: "title", right: "prev,next today" }
+              : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
+          }
+          // Telefonda görünüm düğmeleri başparmağa yakın, altta.
+          footerToolbar={isMobile ? { center: "listWeek,timeGridDay,dayGridMonth" } : undefined}
+          views={{ listWeek: { buttonText: "Liste" } }}
+          height={isMobile ? "auto" : 720}
+          // Dokunmatikte boş alana basılı tutarak plan eklemek için kısa bekleme.
+          longPressDelay={300}
           nowIndicator
           scrollTime="08:00:00"
           slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}

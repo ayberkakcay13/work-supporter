@@ -146,7 +146,7 @@ function PlanRow({
           {goal && <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">{goal.title}</span>}
         </span>
         <button
-          className="btn-ghost text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 dark:text-red-400"
+          className="btn-ghost text-red-600 can-hover:opacity-0 group-hover:opacity-100 focus:opacity-100 dark:text-red-400"
           disabled={pending}
           onClick={() => confirm(`"${plan.title}" silinsin mi?`) && run(() => deletePlan(plan.id))}
         >

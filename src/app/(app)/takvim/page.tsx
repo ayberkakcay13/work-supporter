@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { CalendarBodySkeleton } from "@/components/Skeleton";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { TOPIC_COLUMNS, type Goal, type Topic } from "@/lib/goals";
@@ -9,7 +10,7 @@ export default function TakvimPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Takvim</h1>
-      <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
+      <Suspense fallback={<CalendarBodySkeleton />}>
         <CalendarData />
       </Suspense>
     </div>

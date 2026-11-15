@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { GoalsBodySkeleton } from "@/components/Skeleton";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { istanbulToday, type Goal, type Topic, TOPIC_COLUMNS } from "@/lib/goals";
@@ -9,7 +10,7 @@ import { SESSION_COLUMNS, sessionDuration, type Session } from "@/lib/sessions";
 export default function HedeflerPage() {
   return (
     <div className="space-y-6">
-      <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
+      <Suspense fallback={<GoalsBodySkeleton />}>
         <GoalsData />
       </Suspense>
     </div>

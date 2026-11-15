@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { DayPlanBodySkeleton } from "@/components/Skeleton";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { istanbulToday, localInputToIso } from "@/lib/goals";
@@ -10,7 +11,7 @@ type SearchParams = Promise<{ tarih?: string }>;
 
 export default function GunPlaniPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>}>
+    <Suspense fallback={<div className="space-y-6"><DayPlanBodySkeleton /></div>}>
       <DayPlanData searchParams={searchParams} />
     </Suspense>
   );

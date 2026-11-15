@@ -1,19 +1,13 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { authedClient } from "@/lib/supabase/server";
 import { localInputToIso } from "@/lib/goals";
 import { SEED_GOALS } from "@/lib/seed";
 
 import type { ActionResult } from "@/lib/action";
 
-// RLS zaten sadece sahibine izin verir; burada giriş yapılmış olmasını da kontrol ediyoruz.
-async function authed() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) throw new Error("Giriş yapılmamış");
-  return supabase;
-}
+const authed = async () => (await authedClient()).supabase;
 
 function done(error: { message: string } | null): ActionResult {
   if (error) return { error: error.message };

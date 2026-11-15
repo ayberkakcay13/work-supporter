@@ -1,35 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { playChime } from "@/lib/sound";
 
 type Values = { default_work_min: number; default_break_min: number; sound_enabled: boolean };
 
 // Ayarlar ekranındaki sayaç bölümü: varsayılan süreler ve ses.
-export function TimerSettings() {
-  const [values, setValues] = useState<Values | null>(null);
+export function TimerSettings({ initial }: { initial: Values }) {
+  const [values, setValues] = useState<Values>(initial);
   const [status, setStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    createClient()
-      .from("settings")
-      .select("default_work_min, default_break_min, sound_enabled")
-      .maybeSingle()
-      .then(({ data }) => setValues(data ?? { default_work_min: 25, default_break_min: 10, sound_enabled: true }));
-  }, []);
 
   async function save(next: Values) {
     setValues(next);
     setStatus(null);
     const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
-    const { error } = await supabase.from("settings").upsert({ user_id: data.user.id, ...next });
+    // getSession yerel oturumu okur; Auth sunucusuna ayrıca istek atmaz.
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+    const { error } = await supabase.from("settings").upsert({ user_id: data.session.user.id, ...next });
     setStatus(error ? `Kaydedilemedi: ${error.message}` : "Kaydedildi");
   }
-
-  if (!values) return <p className="text-sm text-zinc-500 dark:text-zinc-400">Yükleniyor…</p>;
 
   const minutes = (key: "default_work_min" | "default_break_min", label: string) => (
     <label className="flex items-center justify-between gap-3 text-sm">
