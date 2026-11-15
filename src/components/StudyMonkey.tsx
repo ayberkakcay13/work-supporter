@@ -1,5 +1,5 @@
 // Sayfa yüklenirken tüm ekranı kaplayan bekleme ekranı: düz arka plan, ortada dönen halkanın
-// içinde masa başında ders çalışan maymun. Hızlı yüklemelerde hiç görünmesin diye 0,4 sn gecikmeyle (CSS) belirir.
+// içinde masa başında ders çalışan maymun. Her beklemede hemen belirir.
 // Animasyonlar globals.css'teki .monkey-* sınıflarında; "hareketi azalt" ayarında durur.
 
 const FUR = "#8b5a2b";
