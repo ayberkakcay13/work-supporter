@@ -1,5 +1,5 @@
-// Sayfa yüklenirken ekranın altında beliren, masa başında ders çalışan maymun.
-// Hızlı yüklemelerde hiç görünmesin diye kısa bir gecikmeyle (CSS) belirir.
+// Sayfa yüklenirken tüm ekranı kaplayan bekleme ekranı: düz arka plan, ortada dönen halkanın
+// içinde masa başında ders çalışan maymun. Hızlı yüklemelerde hiç görünmesin diye 0,4 sn gecikmeyle (CSS) belirir.
 // Animasyonlar globals.css'teki .monkey-* sınıflarında; "hareketi azalt" ayarında durur.
 
 const FUR = "#8b5a2b";
@@ -8,9 +8,23 @@ const INK = "#27272a";
 
 export function StudyMonkey() {
   return (
-    <div className="monkey-appear pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 flex justify-center md:bottom-8 md:left-56">
-      <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white/95 py-2 pr-5 pl-3 shadow-lg backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
-        <svg viewBox="0 0 120 100" className="h-20 w-24" aria-hidden>
+    <div className="monkey-appear fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-zinc-50 dark:bg-zinc-950">
+      <div className="relative flex h-52 w-52 items-center justify-center">
+        {/* maymunun etrafında dönen halka */}
+        <svg viewBox="0 0 100 100" className="monkey-spin absolute inset-0 h-full w-full" aria-hidden>
+          <circle cx="50" cy="50" r="46" fill="none" strokeWidth="3" className="stroke-zinc-200 dark:stroke-zinc-800" />
+          <circle
+            cx="50"
+            cy="50"
+            r="46"
+            fill="none"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray="70 220"
+            className="stroke-indigo-500"
+          />
+        </svg>
+        <svg viewBox="0 0 120 100" className="h-32 w-36" aria-hidden>
           {/* kuyruk */}
           <path
             d="M36 74 C18 76 14 60 22 54 C28 50 32 56 28 60"
@@ -74,13 +88,10 @@ export function StudyMonkey() {
             <path d="M70.6 77 L72 80 L73.3 77.6 Z" fill={INK} />
           </g>
         </svg>
-        <div className="text-sm">
-          <p className="font-medium">Sayfa hazırlanıyor</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Maymun senin yerine çalışıyor<span className="monkey-dots" />
-          </p>
-        </div>
       </div>
+      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+        Yükleniyor<span className="monkey-dots inline-block w-4 text-left" />
+      </p>
     </div>
   );
 }

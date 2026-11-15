@@ -118,8 +118,11 @@
 
 /* Yükleme maymunu (StudyMonkey) */
 @keyframes monkey-appear {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes monkey-spin {
+  to { transform: rotate(360deg); }
 }
 @keyframes monkey-write {
   from { transform: rotate(-7deg) translateX(-1px); }
@@ -145,7 +148,10 @@
 }
 /* Hızlı yüklemelerde görünmesin: 0,4 sn sonra belirir. */
 .monkey-appear {
-  animation: monkey-appear 0.3s ease-out 0.4s both;
+  animation: monkey-appear 0.2s ease-out 0.4s both;
+}
+.monkey-spin {
+  animation: monkey-spin 1.1s linear infinite;
 }
 .monkey-write {
   transform-box: view-box;
@@ -170,7 +176,7 @@
   animation: monkey-dots 1.2s steps(1) infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .monkey-write, .monkey-bob, .monkey-eye, .monkey-tail, .monkey-dots::after {
+  .monkey-spin, .monkey-write, .monkey-bob, .monkey-eye, .monkey-tail, .monkey-dots::after {
     animation: none;
   }
   .monkey-dots::after { content: "…"; }
