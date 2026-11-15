@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { StudyMonkey } from "@/components/StudyMonkey";
 import { DayPlanBodySkeleton } from "@/components/Skeleton";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -11,7 +12,7 @@ type SearchParams = Promise<{ tarih?: string }>;
 
 export default function GunPlaniPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<div className="space-y-6"><DayPlanBodySkeleton /></div>}>
+    <Suspense fallback={<><StudyMonkey /><div className="space-y-6"><DayPlanBodySkeleton /></div></>}>
       <DayPlanData searchParams={searchParams} />
     </Suspense>
   );

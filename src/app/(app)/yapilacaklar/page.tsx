@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { StudyMonkey } from "@/components/StudyMonkey";
 import { TodosBodySkeleton } from "@/components/Skeleton";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -23,7 +24,7 @@ export default function YapilacaklarPage({ searchParams }: { searchParams: Searc
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Yapılacaklar</h1>
-      <Suspense fallback={<TodosBodySkeleton />}>
+      <Suspense fallback={<><StudyMonkey /><TodosBodySkeleton /></>}>
         <TodosView searchParams={searchParams} />
       </Suspense>
     </div>

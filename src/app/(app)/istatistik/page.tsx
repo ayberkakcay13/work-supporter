@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { StudyMonkey } from "@/components/StudyMonkey";
 import { StatsBodySkeleton } from "@/components/Skeleton";
 import { connection } from "next/server";
 import { istanbulToday } from "@/lib/goals";
@@ -10,7 +11,7 @@ export default function IstatistikPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">İstatistik</h1>
-      <Suspense fallback={<StatsBodySkeleton />}>
+      <Suspense fallback={<><StudyMonkey /><StatsBodySkeleton /></>}>
         <StatsData />
       </Suspense>
     </div>

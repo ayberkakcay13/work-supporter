@@ -1,5 +1,6 @@
 // Yükleme iskeletleri: sayfa verisi gelene kadar sayfanın kabaca şeklini gösterir.
 // loading.tsx dosyaları ve sayfalardaki Suspense yedekleri bunları kullanır.
+import { StudyMonkey } from "@/components/StudyMonkey";
 
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden className={`animate-pulse rounded-lg bg-zinc-200/80 dark:bg-zinc-800 ${className}`} />;
@@ -22,6 +23,7 @@ function Rows({ count, className = "h-10" }: { count: number; className?: string
 function Loading({ children }: { children: React.ReactNode }) {
   return (
     <div role="status" aria-label="Yükleniyor" className="space-y-6">
+      <StudyMonkey />
       {children}
     </div>
   );

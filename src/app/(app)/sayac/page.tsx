@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { StudyMonkey } from "@/components/StudyMonkey";
 import { TimerBodySkeleton } from "@/components/Skeleton";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -9,7 +10,7 @@ import { requestTime } from "@/lib/dates";
 
 export default function SayacPage() {
   return (
-    <Suspense fallback={<div className="space-y-6"><TimerBodySkeleton /></div>}>
+    <Suspense fallback={<><StudyMonkey /><div className="space-y-6"><TimerBodySkeleton /></div></>}>
       <TimerData />
     </Suspense>
   );

@@ -115,3 +115,63 @@
     padding: 0.5rem 0.65rem;
   }
 }
+
+/* Yükleme maymunu (StudyMonkey) */
+@keyframes monkey-appear {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes monkey-write {
+  from { transform: rotate(-7deg) translateX(-1px); }
+  to { transform: rotate(6deg) translateX(2px); }
+}
+@keyframes monkey-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(1.5px); }
+}
+@keyframes monkey-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes monkey-tail {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-8deg); }
+}
+@keyframes monkey-dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75%, 100% { content: "..."; }
+}
+/* Hızlı yüklemelerde görünmesin: 0,4 sn sonra belirir. */
+.monkey-appear {
+  animation: monkey-appear 0.3s ease-out 0.4s both;
+}
+.monkey-write {
+  transform-box: view-box;
+  transform-origin: 78px 64px;
+  animation: monkey-write 0.35s ease-in-out infinite alternate;
+}
+.monkey-bob {
+  animation: monkey-bob 1.4s ease-in-out infinite;
+}
+.monkey-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: monkey-blink 3.5s infinite;
+}
+.monkey-tail {
+  transform-box: view-box;
+  transform-origin: 36px 74px;
+  animation: monkey-tail 2s ease-in-out infinite;
+}
+.monkey-dots::after {
+  content: "";
+  animation: monkey-dots 1.2s steps(1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .monkey-write, .monkey-bob, .monkey-eye, .monkey-tail, .monkey-dots::after {
+    animation: none;
+  }
+  .monkey-dots::after { content: "…"; }
+}

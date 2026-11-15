@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { StudyMonkey } from "@/components/StudyMonkey";
 import { HomeBodySkeleton } from "@/components/Skeleton";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -21,7 +22,7 @@ export default function HomePage() {
     <div className="space-y-6">
       <TodayHeader />
       <div className="grid gap-4 lg:grid-cols-3">
-        <Suspense fallback={<HomeBodySkeleton />}>
+        <Suspense fallback={<><StudyMonkey /><HomeBodySkeleton /></>}>
           <HomeData />
         </Suspense>
       </div>
