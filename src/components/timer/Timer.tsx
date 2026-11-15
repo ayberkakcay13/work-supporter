@@ -108,11 +108,15 @@ export function Timer({
       setNow(current);
       if (open && end !== null && current >= end && !handledRef.current) {
         handledRef.current = true;
-        if (soundEnabled) playChime();
-        notify(
-          open.kind === "work" ? "Çalışma süresi doldu" : "Mola bitti",
-          open.kind === "work" ? "Mola vermeyi unutma." : "Hazır olduğunda yeni çalışmayı başlat.",
-        );
+        // Telefon uykudan dönünce geç fark edilen alarm tekrar çalmaz (push zaten bildirdi).
+        const late = current - end > 60_000;
+        if (!late) {
+          if (soundEnabled) playChime();
+          notify(
+            open.kind === "work" ? "Çalışma süresi doldu" : "Mola bitti",
+            open.kind === "work" ? "Mola vermeyi unutma." : "Hazır olduğunda yeni çalışmayı başlat.",
+          );
+        }
         finish(open, new Date(end).toISOString());
       }
     };

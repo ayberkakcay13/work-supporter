@@ -52,7 +52,10 @@ Kişisel ders çalışma planlayıcısı. Tek kullanıcı (Ekrem). Masaüstü ta
 
 - Süreler her başlatmada o an girilir. Son kullanılan değerler hazır gelir.
 - Başlatırken hedef/konu seçimi **isteğe bağlı**.
-- Sabit süre dolunca **ses + masaüstü bildirimi** verilir (Notification API, izin istenir).
+- Sabit süre dolunca **ses + bildirim** verilir (izin istenir). Bildirim service worker üzerinden gösterilir (`registration.showNotification`); Android Chrome `new Notification()` desteklemez.
+- **Push (telefon kilitliyken de alarm):** Supabase `pg_cron` her 15 sn'de `private.trigger_session_alarm()` çalıştırır; süresi dolmuş açık oturum varsa Edge Function `session-alarm` (`supabase/functions/session-alarm`) çağrılır → `close_due_sessions()` oturumu planlanan bitişte kapatır → `push_subscriptions`'taki cihazlara Web Push gider → `public/sw.js` gösterir. Bildirim en fazla ~15 sn gecikebilir.
+  - Çağrı anahtarı (`session_alarm_secret`) ve VAPID anahtarları **Vault**'ta; VAPID anahtarlarını fonksiyon ilk çalışmada kendisi üretti. Tarayıcı açık anahtarı `vapid_public_key()` RPC'si ile alır; Vercel'de ortam değişkeni gerekmez.
+  - Abonelik: sayaç başlatılınca ve Ayarlar → "Bildirimler" ile (`src/lib/push.ts`). Uygulama açıkken hem yerel hem push gelirse aynı `tag: "sayac"` sayesinde tek bildirim görünür.
 - Bir sonraki tur **otomatik başlamaz**, kullanıcı başlatır.
 - Süre `setInterval` sayılarak tutulmaz. Başlangıç zamanı (`started_at`) veritabanına yazılır ve süre `now - started_at` ile hesaplanır. Böylece sekme arka plandayken, sayfa yenilenince ya da tarayıcı kapanıp açılınca sayaç doğru kalır. Açık oturum = `ended_at IS NULL`.
 - Sadece `work` oturumları çalışma süresine sayılır.
@@ -91,16 +94,17 @@ Takvim işaretleri (akademik takvim):
 3. **Yapılacaklar**: gün/hafta/ay listeleri, dönemler arası gezinme
 4. **Sayaç**: 4 mod, ses + bildirim, oturum kaydı, hedef/konu seçimi
 5. **İstatistik + özetler**: grafikler, haftalık/aylık değerlendirme modalı
-6. **Yayın**: Vercel
+6. **Yayın**: Vercel (yayında)
 7. **Telefon + hız**: PWA (manifest, ikonlar), mobil düzen (alt sekme çubuğu, safe-area), yükleme iskeletleri
 
 Her aşama sonunda uygulama çalışır durumda olmalı ve kullanıcı deneyebilmeli.
 
 ## İlerleme
 - **0–5 tamam**: kurulum, hedefler, takvim, yapılacaklar, sayaç, istatistik + özetler. Ek olarak ana ekran ve gün planı (saatlere ders yerleştirme).
-- **6. Yayın (Vercel)**: bu repoda yayın ayarı / kaydı yok; durumu kontrol edilmeli.
+- **6. Yayın**: Vercel'de yayında (GitHub `main` push'u ile).
 - **7. Telefon + hız (2026-11-15)**:
-  - PWA: `src/app/manifest.ts` (standalone, 192/512 + maskable ikonlar `public/icons/`), `public/apple-touch-icon.png`, kök layout'ta `appleWebApp` ve `viewport` (`viewport-fit=cover`, tema rengi). Service worker / çevrimdışı çalışma **yok**.
+  - PWA: `src/app/manifest.ts` (standalone, 192/512 + maskable ikonlar `public/icons/`), `public/apple-touch-icon.png`, kök layout'ta `appleWebApp` ve `viewport` (`viewport-fit=cover`, tema rengi). Çevrimdışı çalışma **yok** (istenmedi).
   - Mobil düzen (< 768 px): yan menü yerine altta sabit sekme çubuğu (`Sidebar.tsx`); `main` altta sekme çubuğu, üstte çentik kadar boşluk bırakır (`env(safe-area-inset-*)`). Takvim telefonda haftalık **liste** görünümüyle açılır, görünüm düğmeleri altta. Sayaç düğmeleri ve seçim çipleri en az 44 px. Girdiler telefonda 16 px (iOS yakınlaştırmasın). "Üzerine gelince görünen" düğmeler dokunmatikte hep görünür (`can-hover:` varyantı).
   - Hız: her sayfada `loading.tsx` iskeleti (`components/Skeleton.tsx`); sunucu eylemleri `getUser()` yerine `getClaims()` kullanır (`authedClient()` in `lib/supabase/server.ts`); Yapılacaklar sayfası hedefleri bir kez çeker (5 → 4 sorgu); Ayarlar'daki sayaç ayarları tarayıcıdan sonradan değil sunucuda okunur. Middleware zaten `getClaims()` kullanıyordu.
-- **Sonra**: service worker (çevrimdışı açılış), iPhone açılış ekranı görselleri.
+- **Android + push (2026-11-15)**: kullanıcı Android kullanıyor. Service worker (`public/sw.js`, sadece bildirim), Web Push zinciri (yukarıda "Sayaç"), Ayarlar'da bildirim aç/kapat + deneme. Migration `0006_push.sql`, `0007_cron_cleanup.sql`.
+- **Sonra**: Android'de ekran ekran kontrol turu (kullanıcı yapacak, sorunları bildirecek).

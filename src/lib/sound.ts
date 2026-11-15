@@ -1,3 +1,5 @@
+import { enablePush, registerServiceWorker } from "@/lib/push";
+
 // Ses dosyası gerektirmeyen kısa üçlü "bip" (Web Audio API).
 export function playChime() {
   try {
@@ -19,20 +21,26 @@ export function playChime() {
   } catch {}
 }
 
-// İzin verilmişse masaüstü bildirimi gösterir.
+// İzin verilmişse bildirim gösterir. Android Chrome `new Notification()` desteklemez;
+// bu yüzden önce service worker üzerinden gösterilir. Push ile aynı etiket ("sayac"): ikisi gelirse tek bildirim kalır.
 export function notify(title: string, body: string) {
   try {
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(title, { body, tag: "sayac" });
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const options = { body, tag: "sayac", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url: "/sayac" } };
+    const reg = registerServiceWorker();
+    if (reg) {
+      void reg.then((r) => r.showNotification(title, options)).catch(() => {});
+    } else {
+      new Notification(title, options);
     }
   } catch {}
 }
 
 // Kullanıcı bir düğmeye bastığında çağrılır; tarayıcılar izni sadece etkileşimle sorar.
+// İzin verilince telefon kilitliyken de alarm gelsin diye push aboneliği açılır.
 export function requestNotificationPermission() {
   try {
-    if ("Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission();
-    }
+    if (!("Notification" in window) || Notification.permission === "denied") return;
+    void enablePush();
   } catch {}
 }

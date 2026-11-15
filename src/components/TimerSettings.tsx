@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { playChime } from "@/lib/sound";
+import { notify, playChime } from "@/lib/sound";
+import { disablePush, enablePush, pushStatus, type PushStatus } from "@/lib/push";
 
 type Values = { default_work_min: number; default_break_min: number; sound_enabled: boolean };
 
@@ -60,10 +61,68 @@ export function TimerSettings({ initial }: { initial: Values }) {
           />
         </span>
       </label>
+      <PushSetting />
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Sayaçta en son kullandığın süreler de buraya kaydedilir ve bir dahaki sefere hazır gelir.
         {status && ` · ${status}`}
       </p>
+    </div>
+  );
+}
+
+const PUSH_LABELS: Record<PushStatus, string> = {
+  on: "Açık",
+  off: "Kapalı",
+  denied: "Tarayıcı engelledi (site ayarlarından izin ver)",
+  unsupported: "Bu tarayıcı desteklemiyor",
+};
+
+// Telefon kilitliyken de sayaç alarmı: push aboneliğini açar / kapatır.
+function PushSetting() {
+  const [status, setStatus] = useState<PushStatus | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void pushStatus().then(setStatus);
+  }, []);
+
+  async function toggle() {
+    setBusy(true);
+    setMessage(null);
+    const err = status === "on" ? await disablePush() : await enablePush();
+    setMessage(err);
+    setStatus(await pushStatus());
+    setBusy(false);
+  }
+
+  return (
+    <div className="space-y-1 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          Bildirimler (telefon kilitliyken de)
+          <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+            {status ? PUSH_LABELS[status] : "…"}
+          </span>
+        </span>
+        <span className="flex items-center gap-2">
+          {status === "on" && (
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => notify("Deneme bildirimi", "Sayaç bildirimleri bu cihazda çalışıyor.")}
+            >
+              Dene
+            </button>
+          )}
+          {(status === "on" || status === "off") && (
+            <button type="button" className="btn-secondary px-3 py-1.5" disabled={busy} onClick={toggle}>
+              {status === "on" ? "Kapat" : "Aç"}
+            </button>
+          )}
+        </span>
+      </div>
+      {message && <p className="text-xs text-red-600 dark:text-red-400">{message}</p>}
     </div>
   );
 }
