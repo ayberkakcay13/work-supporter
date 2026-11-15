@@ -56,6 +56,8 @@ Kişisel ders çalışma planlayıcısı. Tek kullanıcı (Ekrem), şimdilik sad
 - Bir sonraki tur **otomatik başlamaz**, kullanıcı başlatır.
 - Süre `setInterval` sayılarak tutulmaz. Başlangıç zamanı (`started_at`) veritabanına yazılır ve süre `now - started_at` ile hesaplanır. Böylece sekme arka plandayken, sayfa yenilenince ya da tarayıcı kapanıp açılınca sayaç doğru kalır. Açık oturum = `ended_at IS NULL`.
 - Sadece `work` oturumları çalışma süresine sayılır.
+- Başlat / durdur / sil **iyimser** çalışır: ekran hemen güncellenir, kayıt tarayıcıdaki Supabase istemcisiyle arka planda yapılır (`src/lib/sessions-client.ts`); sunucu eylemi ve sayfa yeniden çizimi yoktur. Hata olursa değişiklik geri alınır ve kısa bir uyarı gösterilir. `started_at` / `ended_at` istemcide alınıp açıkça gönderilir, veritabanındaki `now()` varsayılanına güvenilmez.
+- **Not — saat sapması:** Başlangıç ve bitiş zamanı tarayıcının (bilgisayarın) saatinden alınır ve süre de o saatle hesaplanır. Bilgisayarın saati çok saparsa (otomatik saat kapalıysa vb.) kaydedilen süreler ve başka cihazda açılan oturumun süresi yanlış görünebilir.
 
 ## Veri modeli (taslak)
 - `goals`: id, user_id, type, title, course_code, starts_at, location, color, notes, created_at

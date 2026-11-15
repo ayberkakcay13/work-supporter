@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatInTimeZone } from "@/lib/dates";
 import { formatClock, formatTotal, plannedEnd, sessionDuration, workTotal, type Session, type SessionKind } from "@/lib/sessions";
 import { notify, playChime, requestNotificationPermission } from "@/lib/sound";
-import { deleteSession, endSession, startSession } from "@/app/(app)/sayac/actions";
-import { useAction } from "@/components/useAction";
+import { endTime, newSession, removeSession, saveSession, saveSessionEnd } from "@/lib/sessions-client";
 
 export type TimerGoal = { id: string; title: string; color: string; topics: { id: string; label: string }[] };
 
@@ -26,9 +25,9 @@ const KIND_COLORS: Record<SessionKind, { ring: string; text: string }> = {
 };
 
 export function Timer({
-  open,
-  todaySessions,
-  lastEnded,
+  open: initialOpen,
+  todaySessions: initialSessions,
+  lastEnded: initialLastEnded,
   goals,
   defaults,
   soundEnabled,
@@ -45,13 +44,22 @@ export function Timer({
   serverNow: number;
 }) {
   const [now, setNow] = useState(serverNow);
-  const offsetRef = useRef(0);
+  // Oturumlar yerel durumda tutulur; başlat/durdur ekranı hemen günceller, kayıt arka planda gider.
+  const [open, setOpen] = useState(initialOpen);
+  const [todaySessions, setTodaySessions] = useState(initialSessions);
+  const [lastEnded, setLastEnded] = useState(initialLastEnded);
+  const [toast, setToast] = useState<string | null>(null);
   const handledRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { pending, error, run } = useAction();
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 4000);
+    return () => window.clearTimeout(id);
+  }, [toast]);
 
   // Son biten oturum 15 dakikadan yeniyse sıradaki adım önerilir (çalışmadan sonra mola).
-  const justEnded = !open && lastEnded && serverNow - Date.parse(lastEnded.ended_at!) < 15 * 60_000 ? lastEnded : null;
+  const justEnded = !open && lastEnded && now - Date.parse(lastEnded.ended_at!) < 15 * 60_000 ? lastEnded : null;
 
   // Tercihler: 1) çalışma / mola, 2) alarm dakikası (boş = süresiz), 3) ders / proje.
   const [kind, setKind] = useState<SessionKind>(justEnded?.kind === "work" ? "break" : "work");
@@ -67,12 +75,29 @@ export function Timer({
 
   const end = open ? plannedEnd(open) : null;
 
+  // Oturumu ekranda hemen kapatır, bitişi arka planda yazar; hata olursa geri alır.
+  function finish(session: Session, endedAt: string) {
+    const ended = { ...session, ended_at: endedAt };
+    const previousLast = lastEnded;
+    setOpen(null);
+    setLastEnded(ended);
+    setTodaySessions((list) => list.map((s) => (s.id === session.id ? ended : s)));
+    setKind(session.kind === "work" ? "break" : "work");
+    void saveSessionEnd(session.id, endedAt).then((err) => {
+      if (!err) return;
+      setOpen(session);
+      setLastEnded(previousLast);
+      setTodaySessions((list) => list.map((s) => (s.id === session.id ? session : s)));
+      setToast(`Durdurulamadı: ${err}`);
+    });
+  }
+
   // Süre, başlangıç zamanından hesaplanır; aralık sadece ekranı yeniler.
-  // Saat farkı sunucu saatine göre düzeltilir.
+  // Başlangıç zamanı tarayıcı saatinden alındığı için süre de tarayıcı saatiyle hesaplanır.
   useEffect(() => {
-    offsetRef.current = serverNow - Date.now();
+    handledRef.current = false;
     const tick = () => {
-      const current = Date.now() + offsetRef.current;
+      const current = Date.now();
       setNow(current);
       if (open && end !== null && current >= end && !handledRef.current) {
         handledRef.current = true;
@@ -81,17 +106,23 @@ export function Timer({
           open.kind === "work" ? "Çalışma süresi doldu" : "Mola bitti",
           open.kind === "work" ? "Mola vermeyi unutma." : "Hazır olduğunda yeni çalışmayı başlat.",
         );
-        void endSession(open.id);
+        finish(open, new Date(end).toISOString());
       }
     };
     // Sayfa açıldığında süresi zaten dolmuşsa ses çıkarmadan kapatılır.
-    if (open && end !== null && serverNow >= end) {
+    let expired: number | undefined;
+    if (open && end !== null && Date.now() >= end) {
       handledRef.current = true;
-      void endSession(open.id);
+      expired = window.setTimeout(() => finish(open, new Date(end).toISOString()), 0);
     }
     const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, [open, end, serverNow, soundEnabled]);
+    return () => {
+      window.clearInterval(id);
+      window.clearTimeout(expired);
+    };
+    // finish her çizimde yeniden oluşur; efekt sadece oturum değişince kurulmalı.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, end, soundEnabled]);
 
   const elapsed = open ? Math.max(0, now - Date.parse(open.started_at)) : 0;
 
@@ -109,12 +140,33 @@ export function Timer({
   const alarmValid = alarm[kind] === "" || (Number.isInteger(alarmMinutes) && alarmMinutes > 0 && alarmMinutes <= 600);
 
   function start() {
-    if (!alarmValid) return;
-    requestNotificationPermission();
+    if (!alarmValid || open) return;
     const minutes = (k: SessionKind) => (alarm[k] ? Number(alarm[k]) : null);
-    run(() =>
-      startSession(kind, minutes(kind), goalId || null, topicId || null, { work: minutes("work"), break: minutes("break") }),
-    );
+    const session = newSession(kind, minutes(kind), goalId || null, topicId || null);
+    // Sayaç hemen saymaya başlar.
+    setNow(Date.parse(session.started_at));
+    setOpen(session);
+    setTodaySessions((list) => [...list, session]);
+    void saveSession(session, { work: minutes("work"), break: minutes("break") }).then((err) => {
+      if (!err) return;
+      setOpen((o) => (o?.id === session.id ? null : o));
+      setTodaySessions((list) => list.filter((s) => s.id !== session.id));
+      setToast(`Sayaç başlatılamadı: ${err}`);
+    });
+    // Bildirim izni sayaç başladıktan sonra istenir.
+    requestNotificationPermission();
+  }
+
+  function remove(session: Session) {
+    if (!confirm("Bu oturum silinsin mi?")) return;
+    setTodaySessions((list) => list.filter((s) => s.id !== session.id));
+    void removeSession(session.id).then((err) => {
+      if (!err) return;
+      setTodaySessions((list) =>
+        [...list, session].sort((a, b) => Date.parse(a.started_at) - Date.parse(b.started_at)),
+      );
+      setToast(`Silinemedi: ${err}`);
+    });
   }
 
   // Halka: sabit sürede alarma kadar dolar; süresizde her dakika bir tur atar.
@@ -132,6 +184,14 @@ export function Timer({
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div
+          role="alert"
+          className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-red-600 px-4 py-2 text-sm text-white shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sayaç</h1>
         <button
@@ -173,15 +233,14 @@ export function Timer({
           {open ? (
             <button
               className="mt-2 rounded-full bg-zinc-900 px-6 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-              disabled={pending}
-              onClick={() => run(() => endSession(open.id))}
+              onClick={() => finish(open, endTime(open, Date.now()))}
             >
               ■ Durdur
             </button>
           ) : (
             <button
               className="mt-2 rounded-full bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
-              disabled={pending || !alarmValid}
+              disabled={!alarmValid}
               onClick={start}
             >
               ▶ Başlat
@@ -298,7 +357,6 @@ export function Timer({
             )}
           </div>
         )}
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </div>
 
       <section className="card space-y-3">
@@ -329,8 +387,7 @@ export function Timer({
                   {s.ended_at && (
                     <button
                       className="btn-ghost ml-auto text-red-600 opacity-0 group-hover:opacity-100 dark:text-red-400"
-                      disabled={pending}
-                      onClick={() => confirm("Bu oturum silinsin mi?") && run(() => deleteSession(s.id))}
+                      onClick={() => remove(s)}
                     >
                       Sil
                     </button>

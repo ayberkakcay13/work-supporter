@@ -8,7 +8,7 @@ import { formatInTimeZone } from "@/lib/dates";
 import { DEFAULT_PLAN_COLOR, planDuration, untimedRange, type Plan } from "@/lib/plans";
 import { formatTotal } from "@/lib/sessions";
 import { deletePlan, savePlan, setPlanDone } from "@/app/(app)/takvim/actions";
-import { startSession } from "@/app/(app)/sayac/actions";
+import { newSession, saveSession } from "@/lib/sessions-client";
 import { useAction } from "@/components/useAction";
 
 export type PlanGoal = { id: string; title: string; color: string };
@@ -113,7 +113,11 @@ function PlanRow({
     // Sayaç, planın süresi kadar alarm kurulu olarak başlar.
     const minutes = Math.min(600, Math.max(1, Math.round(planDuration(plan) / 60_000)));
     run(
-      () => startSession("work", minutes, plan.goal_id, plan.topic_id),
+      // Açık oturum varsa saveSession onu kapatıp yenisini ekler.
+      async () => {
+        const err = await saveSession(newSession("work", minutes, plan.goal_id, plan.topic_id));
+        return err ? { error: err } : {};
+      },
       () => router.push("/sayac"),
     );
   }
