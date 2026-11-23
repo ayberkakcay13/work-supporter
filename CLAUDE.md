@@ -24,7 +24,7 @@ Kişisel ders çalışma planlayıcısı. Tek kullanıcı (Ekrem). Masaüstü ta
 
 ## Ekranlar
 1. **Bugün** (ana sayfa): bugünün takvim planları, günlük yapılacaklar, sayaç kısayolu, bugün/bu hafta toplam çalışma süresi
-2. **Hedefler**: sınav/proje → konu → alt başlık ağacı
+2. **Hedefler**: iki sekme — **Plan** (haftalık plan tahtası, varsayılan) ve **Hedefler** (sınav/proje → konu → alt başlık ağacı)
 3. **Takvim**: ay/hafta/gün görünümü; sınav tarihleri otomatik; konular takvime sürüklenip plan yapılır
 4. **Yapılacaklar**: Günlük / Haftalık / Aylık sekmeleri
 5. **Sayaç**: tam ekran çalışma sayacı
@@ -69,6 +69,8 @@ Kişisel ders çalışma planlayıcısı. Tek kullanıcı (Ekrem). Masaüstü ta
 - `todos`: id, user_id, title, scope (`day` | `week` | `month`), period_start (date), done_at, goal_id?, sort_order
 - `sessions`: id, user_id, kind (`work` | `break`), started_at, ended_at, planned_minutes?, goal_id?, topic_id?
 - `reviews`: id, user_id, period_type (`week` | `month`), period_start, seen_at
+- `courses`: id, user_id, code (kullanıcı başına tekil), name, color — elle eklenen / düzenlenen ders kartları
+- `week_cards`: id, user_id, day (date), course_code, topic?, time? ("HH:mm"), sort_order (double), done
 - `settings`: user_id (PK), theme (`light` | `dark` | `auto`), default_work_min, default_break_min, sound_enabled
 
 ## Başlangıç verisi (2026-2027 Güz)
@@ -107,4 +109,5 @@ Her aşama sonunda uygulama çalışır durumda olmalı ve kullanıcı deneyebil
   - Mobil düzen (< 768 px): yan menü yerine altta sabit sekme çubuğu (`Sidebar.tsx`); `main` altta sekme çubuğu, üstte çentik kadar boşluk bırakır (`env(safe-area-inset-*)`). Takvim telefonda haftalık **liste** görünümüyle açılır, görünüm düğmeleri altta. Sayaç düğmeleri ve seçim çipleri en az 44 px. Girdiler telefonda 16 px (iOS yakınlaştırmasın). "Üzerine gelince görünen" düğmeler dokunmatikte hep görünür (`can-hover:` varyantı).
   - Hız: her sayfada `loading.tsx` iskeleti (`components/Skeleton.tsx`); sunucu eylemleri `getUser()` yerine `getClaims()` kullanır (`authedClient()` in `lib/supabase/server.ts`); Yapılacaklar sayfası hedefleri bir kez çeker (5 → 4 sorgu); Ayarlar'daki sayaç ayarları tarayıcıdan sonradan değil sunucuda okunur. Middleware zaten `getClaims()` kullanıyordu.
 - **Android + push (2026-11-15)**: kullanıcı Android kullanıyor. Service worker (`public/sw.js`, sadece bildirim), Web Push zinciri (yukarıda "Sayaç"), Ayarlar'da bildirim aç/kapat + deneme. Migration `0006_push.sql`, `0007_cron_cleanup.sql`.
+- **Haftalık plan tahtası (2026-11-23)**: Hedefler > Plan sekmesi (`components/goals/WeekBoard.tsx`, `lib/week.ts`, migration `0008_week_board.sql`). Solda ders kartları: hedeflerdeki ders kodları otomatik (ad başlıktaki "—" sonrası, renk hedeften), "+ Kart ekle" ile elle ders; aynı kodda `courses` satırı varsa ad/renk ondan. Pzt–Paz sütunları, kartlar sürükle-bırak ile güne ve kartların arasındaki kesikli boşluklara konur (sıra `sort_order` ara değeriyle). Karta tıklayınca konu (serbest yazı, hedef konuları öneri), gün, isteğe bağlı saat, tamamlandı, yukarı/aşağı, sil. "+ Oluştur" ile ders/konu/gün seçip kart ekleme. İyimser kayıt (tarayıcı Supabase istemcisi, hata olursa geri alınır). Planları/istatistikleri etkilemez. Bugünün kartları ana ekranda "Bugünün kartları" bölümünde. Hafta adres çubuğunda: `/hedefler?sekme=plan&hafta=yyyy-MM-dd`.
 - **Sonra**: Android'de ekran ekran kontrol turu (kullanıcı yapacak, sorunları bildirecek).

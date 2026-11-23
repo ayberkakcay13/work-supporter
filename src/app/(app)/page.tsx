@@ -16,6 +16,7 @@ import { formatInTimeZone, requestTime } from "@/lib/dates";
 import { SESSION_COLUMNS, workTotal, type Session } from "@/lib/sessions";
 import { dayStartMs, planVsWork } from "@/lib/stats";
 import { CourseList, CourseRing } from "@/components/stats/CourseProgress";
+import { mergeCourses, sortCards, UNKNOWN_COURSE_COLOR, WEEK_CARD_COLUMNS, type CourseRow, type WeekCard } from "@/lib/week";
 
 export default function HomePage() {
   return (
@@ -42,7 +43,7 @@ async function HomeData() {
   const now = requestTime();
 
   const supabase = await createClient();
-  const [plans, goals, open, sessions] = await Promise.all([
+  const [plans, goals, open, sessions, cards, courses] = await Promise.all([
     supabase.from("plans").select(PLAN_COLUMNS).lt("starts_at", to).gt("ends_at", from).order("starts_at"),
     supabase
       .from("goals")
@@ -50,10 +51,12 @@ async function HomeData() {
       .order("starts_at", { ascending: true, nullsFirst: false }),
     supabase.from("sessions").select(SESSION_COLUMNS).is("ended_at", null).maybeSingle<Session>(),
     supabase.from("sessions").select(SESSION_COLUMNS).eq("kind", "work").gte("started_at", from),
+    supabase.from("week_cards").select(WEEK_CARD_COLUMNS).eq("day", today),
+    supabase.from("courses").select("code, name, color"),
   ]);
 
-  if (plans.error || goals.error || open.error || sessions.error) {
-    const message = (plans.error ?? goals.error ?? open.error ?? sessions.error)!.message;
+  if (plans.error || goals.error || open.error || sessions.error || cards.error || courses.error) {
+    const message = (plans.error ?? goals.error ?? open.error ?? sessions.error ?? cards.error ?? courses.error)!.message;
     return <section className="card text-sm text-red-600 dark:text-red-400 lg:col-span-3">Yüklenemedi: {message}</section>;
   }
 
@@ -83,6 +86,10 @@ async function HomeData() {
   const todayCourses = planVsWork(plansOn(today), work, goals.data, dayStartMs(today), dayStartMs(shiftPeriod("day", today, 1)), now);
   const weekCourses = planVsWork(all, work, goals.data, dayStartMs(weekStart), dayStartMs(weekEnd), now);
 
+  // Haftalık plan tahtasından bugünün kartları.
+  const courseColor = new Map(mergeCourses(goals.data, courses.data as CourseRow[]).map((c) => [c.code, c.color]));
+  const todayCards = sortCards(cards.data as WeekCard[]);
+
   const otherDays = weekDays
     .filter((d) => d !== today)
     .map((d) => ({ day: d, isPast: d < today, plans: plansOn(d) }));
@@ -104,6 +111,34 @@ async function HomeData() {
             today={today}
             hasOpenSession={!!open.data}
           />
+        </section>
+        <section className="card">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-medium">Bugünün kartları</h2>
+            <Link href="/hedefler?sekme=plan" className="btn-secondary px-3 py-1.5 text-xs">
+              Haftalık plan
+            </Link>
+          </div>
+          {todayCards.length === 0 ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Bugüne kart koyulmamış.</p>
+          ) : (
+            <ul className="flex flex-wrap gap-2">
+              {todayCards.map((c) => {
+                const color = courseColor.get(c.course_code) ?? UNKNOWN_COURSE_COLOR;
+                return (
+                  <li
+                    key={c.id}
+                    className={`rounded-md border-l-4 px-3 py-1.5 text-sm ${c.done ? "opacity-50 line-through" : ""}`}
+                    style={{ borderLeftColor: color, backgroundColor: `${color}1f` }}
+                  >
+                    {c.time && <span className="mr-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">{c.time}</span>}
+                    <span className="font-medium">{c.course_code}</span>
+                    {c.topic && <span className="text-zinc-600 dark:text-zinc-300"> · {c.topic}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
         <section className="card">
           <h2 className="mb-3 font-medium">
